@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
 import java.util.UUID;
@@ -26,6 +27,7 @@ class TenantIsolationTest {
   @Mock private BookRepository books;
   @Mock private ContributorRepository contributors;
   @Mock private OrganizationRepository organizations;
+  @Mock private StockMovementRepository movements;
 
   @AfterEach
   void tearDown() {
@@ -39,7 +41,7 @@ class TenantIsolationTest {
     var pageable = PageRequest.of(0, 10);
     when(books.findByOrganizationId(eq(orgA), eq(pageable))).thenReturn(Page.empty(pageable));
 
-    new BookService(books, organizations).list(null, null, pageable);
+    new BookService(books, organizations, movements).list(null, null, pageable);
 
     verify(books).findByOrganizationId(eq(orgA), eq(pageable));
   }

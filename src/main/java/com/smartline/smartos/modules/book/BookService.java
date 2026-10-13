@@ -5,6 +5,7 @@ import com.smartline.smartos.modules.audit.Audited;
 import com.smartline.smartos.modules.book.Book.BookStatus;
 import com.smartline.smartos.modules.book.BookDtos.CreateBookRequest;
 import com.smartline.smartos.modules.book.BookDtos.UpdateBookRequest;
+import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
@@ -19,10 +20,13 @@ public class BookService {
 
   private final BookRepository books;
   private final OrganizationRepository organizations;
+  private final StockMovementRepository movements;
 
-  public BookService(BookRepository books, OrganizationRepository organizations) {
+  public BookService(BookRepository books, OrganizationRepository organizations,
+      StockMovementRepository movements) {
     this.books = books;
     this.organizations = organizations;
+    this.movements = movements;
   }
 
   @Transactional
@@ -106,6 +110,11 @@ public class BookService {
   @Transactional
   @Audited(action = "book.delete", entityType = "Book")
   public void delete(UUID id) {
-    books.delete(get(id));
+    UUID orgId = TenantContext.require();
+    Book book = get(id);
+    if (movements.existsByOrganizationIdAndBookId(orgId, book.getId())) {
+      throw ApiException.conflict("Book has inventory history and cannot be deleted");
+    }
+    books.delete(book);
   }
 }
