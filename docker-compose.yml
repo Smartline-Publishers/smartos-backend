@@ -1,10 +1,10 @@
-# Local Postgres for SmartOs
+# Local Postgres for SmartOs (PostgreSQL 18 baseline).
 # Backend and frontend run locally (see README.md quickstart).
 # Only infra in compose is `db`. Add services later if needed.
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: smartos-db
     restart: unless-stopped
     env_file:

@@ -1,6 +1,6 @@
 # Database
 
-PostgreSQL 16. Flyway-managed (`V1__init.sql`, then one file per change).
+PostgreSQL 18 (compose `postgres:18-alpine`). Flyway-managed (`V1__init.sql`, then one file per change).
 All FKs indexed. Money as `NUMERIC(12,2)`. IDs as `UUID` (gen_random_uuid).
 
 ## Core Entities & Relationships
