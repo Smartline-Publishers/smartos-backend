@@ -19,11 +19,15 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 ## Quickstart
 
 ```bash
-# 1. Start Postgres (reads .env in this directory)
+# 1. Start Postgres (compose reads .env in this directory)
 docker compose up db -d
 
-# 2. Run the API (Windows: .\mvnw.cmd spring-boot:run)
-./mvnw spring-boot:run
+# 2. Export datasource credentials (the API reads process env, not .env)
+# PowerShell: $env:DB_USER='smartos'; $env:DB_PASSWORD='<from .env>'; $env:JWT_SECRET='<from .env>'
+# bash: export DB_USER=smartos DB_PASSWORD='<from .env>' JWT_SECRET='<from .env>'
+
+# 3. Run the API (Windows: .\mvnw.cmd spring-boot:run)
+/mvnw spring-boot:run
 ```
 
 | Service  | URL                            |
@@ -58,8 +62,9 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 
 | Var | Used by | Default |
 | --- | ------- | ------- |
+| `POSTGRES_HOST` / `POSTGRES_PORT` | connection host/port as seen by the API (`localhost` local; `db` if containerized) | `localhost/5432` (port also mapped by compose) |
 | `POSTGRES_DB/USER/PASSWORD` | compose `db` container | `smartos/smartos/<required>` |
-| `DB_URL` | `application.yml` datasource | `jdbc:postgresql://localhost:5432/smartos` |
+| `DB_URL` | `application.yml` datasource (keep in sync with the parts above) | `jdbc:postgresql://localhost:5432/smartos` |
 | `DB_USER` / `DB_PASSWORD` | datasource credentials | `postgres/postgres` (override in `.env`) |
 | `JWT_SECRET` | token signing (≥256-bit) | dev-only placeholder — must override |
 | `CORS_ORIGINS` | allowed web origins | `http://localhost:3000` |
