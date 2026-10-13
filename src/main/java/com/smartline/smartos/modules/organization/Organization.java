@@ -21,7 +21,25 @@ import org.hibernate.type.SqlTypes;
 public class Organization {
 
   public enum Plan {
-    FREE, GROWTH, SCALE
+    FREE(5, 100),
+    GROWTH(50, 2000),
+    SCALE(Integer.MAX_VALUE, Integer.MAX_VALUE);
+
+    private final int maxUsers;
+    private final int maxBooks;
+
+    Plan(int maxUsers, int maxBooks) {
+      this.maxUsers = maxUsers;
+      this.maxBooks = maxBooks;
+    }
+
+    public int getMaxUsers() {
+      return maxUsers;
+    }
+
+    public int getMaxBooks() {
+      return maxBooks;
+    }
   }
 
   @Id

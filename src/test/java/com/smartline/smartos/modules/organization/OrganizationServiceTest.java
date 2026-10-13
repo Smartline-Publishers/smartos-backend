@@ -85,6 +85,25 @@ class OrganizationServiceTest {
     assertEquals(orgB, service.get(orgB.getId()));
   }
 
+  @Test
+  void currentReturnsCallerOrganization() {
+    authenticate(Role.ORG_ADMIN, orgB.getId());
+    when(repository.findById(orgB.getId())).thenReturn(Optional.of(orgB));
+
+    assertEquals(orgB, service.current());
+  }
+
+  @Test
+  void changePlanUpdatesPlan() {
+    orgA.setPlan(Organization.Plan.FREE);
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+    when(repository.save(any(Organization.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    Organization updated = service.changePlan(orgA.getId(), Organization.Plan.GROWTH);
+
+    assertEquals(Organization.Plan.GROWTH, updated.getPlan());
+  }
+
   private Organization org(String name, String slug) {
     Organization org = new Organization();
     org.setId(UUID.randomUUID());

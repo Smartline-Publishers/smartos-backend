@@ -8,7 +8,9 @@ import com.smartline.smartos.security.AuthDtos.RegisterOrgRequest;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
 import com.smartline.smartos.security.JwtService;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.TokenHashes;
 import io.jsonwebtoken.Claims;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -21,13 +23,16 @@ public class AuthService {
 
   private final AppUserRepository users;
   private final OrganizationRepository organizations;
+  private final RefreshTokenRepository refreshTokens;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
 
   public AuthService(AppUserRepository users, OrganizationRepository organizations,
-      PasswordEncoder passwordEncoder, JwtService jwtService) {
+      RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
+      JwtService jwtService) {
     this.users = users;
     this.organizations = organizations;
+    this.refreshTokens = refreshTokens;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
   }
@@ -53,14 +58,10 @@ public class AuthService {
     admin.setActive(true);
     AppUser savedAdmin = users.save(admin);
 
-    List<String> roles = List.of(savedAdmin.getRole().name());
-    return new TokenResponse(
-        jwtService.generateAccessToken(savedAdmin.getId(), saved.getId(), roles),
-        jwtService.generateRefreshToken(savedAdmin.getId(), saved.getId()),
-        "Bearer");
+    return issueTokens(savedAdmin, saved.getId());
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public TokenResponse login(LoginRequest req) {
     String email = req.getEmail().trim().toLowerCase();
     AppUser user;
@@ -70,7 +71,7 @@ public class AuthService {
     } else {
       // Same email can exist in multiple organizations (unique per org, not
       // globally): never pick an organization arbitrarily.
-      java.util.      List<AppUser> matches = users.findByEmailIgnoreCase(email).stream()
+      List<AppUser> matches = users.findByEmailIgnoreCase(email).stream()
           .filter(AppUser::isActive)
           .toList();
       if (matches.size() > 1) {
@@ -85,14 +86,15 @@ public class AuthService {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials");
     }
     UUID orgId = user.getOrganization().getId();
-    List<String> roles = List.of(user.getRole().name());
-    return new TokenResponse(
-        jwtService.generateAccessToken(user.getId(), orgId, roles),
-        jwtService.generateRefreshToken(user.getId(), orgId),
-        "Bearer");
+    return issueTokens(user, orgId);
   }
 
-  @Transactional(readOnly = true)
+  /**
+   * Rotating refresh: a presented token is revoked and replaced. Presenting an
+   * already-rotated (or logged-out) token signals compromise, so the whole
+   * family is revoked and the caller gets 401.
+   */
+  @Transactional
   public TokenResponse refresh(String refreshToken) {
     Claims claims;
     try {
@@ -103,15 +105,63 @@ public class AuthService {
     if (!"refresh".equals(claims.get("type", String.class))) {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid refresh token");
     }
-    UUID userId = UUID.fromString(claims.getSubject());
+    RefreshToken stored = refreshTokens.findByTokenHash(TokenHashes.sha256Hex(refreshToken))
+        .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
+            "Invalid refresh token"));
+    if (stored.isRevoked() || stored.getExpiresAt().isBefore(Instant.now())) {
+      revokeFamily(stored.getUser().getId());
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid refresh token");
+    }
+    AppUser user = stored.getUser();
+    if (user == null || !user.isActive()) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid refresh token");
+    }
     UUID orgId = jwtService.extractOrgId(claims);
-    AppUser user = users.findById(userId)
-        .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "User not found"));
-    List<String> roles = List.of(user.getRole().name());
     UUID effectiveOrg = orgId != null ? orgId : user.getOrganization().getId();
-    return new TokenResponse(
-        jwtService.generateAccessToken(user.getId(), effectiveOrg, roles),
-        jwtService.generateRefreshToken(user.getId(), effectiveOrg),
-        "Bearer");
+    List<String> roles = List.of(user.getRole().name());
+    String access = jwtService.generateAccessToken(user.getId(), effectiveOrg, roles);
+    String nextRefresh = jwtService.generateRefreshToken(user.getId(), effectiveOrg);
+    RefreshToken replacement = storeRefresh(user, nextRefresh);
+    stored.setRevoked(true);
+    stored.setReplacedBy(replacement.getId());
+    refreshTokens.save(stored);
+    return new TokenResponse(access, nextRefresh, "Bearer");
+  }
+
+  @Transactional
+  public void logout(String refreshToken) {
+    if (refreshToken == null || refreshToken.isBlank()) {
+      return;
+    }
+    refreshTokens.findByTokenHash(TokenHashes.sha256Hex(refreshToken.trim()))
+        .ifPresent(record -> {
+          record.setRevoked(true);
+          refreshTokens.save(record);
+        });
+  }
+
+  private TokenResponse issueTokens(AppUser user, UUID orgId) {
+    List<String> roles = List.of(user.getRole().name());
+    String access = jwtService.generateAccessToken(user.getId(), orgId, roles);
+    String refresh = jwtService.generateRefreshToken(user.getId(), orgId);
+    storeRefresh(user, refresh);
+    return new TokenResponse(access, refresh, "Bearer");
+  }
+
+  private RefreshToken storeRefresh(AppUser user, String refreshToken) {
+    RefreshToken record = new RefreshToken();
+    record.setUser(user);
+    record.setTokenHash(TokenHashes.sha256Hex(refreshToken));
+    record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
+    return refreshTokens.save(record);
+  }
+
+  private void revokeFamily(UUID userId) {
+    for (RefreshToken record : refreshTokens.findByUserId(userId)) {
+      if (!record.isRevoked()) {
+        record.setRevoked(true);
+        refreshTokens.save(record);
+      }
+    }
   }
 }

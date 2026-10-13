@@ -2,6 +2,7 @@ package com.smartline.smartos.modules.user;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -12,12 +13,17 @@ import com.smartline.smartos.security.AuthDtos.LoginRequest;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
 import com.smartline.smartos.security.JwtService;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.TokenHashes;
+import io.jsonwebtoken.Claims;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +33,7 @@ class AuthServiceTest {
 
   @Mock private AppUserRepository users;
   @Mock private OrganizationRepository organizations;
+  @Mock private RefreshTokenRepository refreshTokens;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
 
@@ -34,7 +41,7 @@ class AuthServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new AuthService(users, organizations, passwordEncoder, jwtService);
+    service = new AuthService(users, organizations, refreshTokens, passwordEncoder, jwtService);
   }
 
   @Test
@@ -77,6 +84,78 @@ class AuthServiceTest {
         () -> service.login(new LoginRequest("admin@acme.test", "wrong", null)));
 
     assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+  }
+
+  @Test
+  void refreshRotatesAndRevokesOldToken() {
+    Organization org = org();
+    AppUser user = user(org, "admin@acme.test");
+    RefreshToken stored = storedToken(user, "old-refresh");
+    Claims claims = Mockito.mock(Claims.class);
+    when(claims.get("type", String.class)).thenReturn("refresh");
+    when(jwtService.parse("old-refresh")).thenReturn(claims);
+    when(refreshTokens.findByTokenHash(TokenHashes.sha256Hex("old-refresh")))
+        .thenReturn(Optional.of(stored));
+    when(jwtService.extractOrgId(claims)).thenReturn(org.getId());
+    when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()),
+        eq(List.of("ORG_ADMIN")))).thenReturn("access-2");
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId())))
+        .thenReturn("refresh-2");
+    when(refreshTokens.save(any(RefreshToken.class))).thenAnswer(inv -> {
+      RefreshToken r = inv.getArgument(0);
+      if (r.getId() == null) {
+        r.setId(UUID.randomUUID());
+      }
+      return r;
+    });
+
+    TokenResponse tokens = service.refresh("old-refresh");
+
+    assertEquals("access-2", tokens.getAccessToken());
+    assertEquals("refresh-2", tokens.getRefreshToken());
+    assertEquals(true, stored.isRevoked());
+  }
+
+  @Test
+  void refreshReuseRevokesFamily() {
+    Organization org = org();
+    AppUser user = user(org, "admin@acme.test");
+    RefreshToken old = storedToken(user, "old-refresh");
+    old.setRevoked(true);
+    RefreshToken current = storedToken(user, "current-refresh");
+    Claims claims = Mockito.mock(Claims.class);
+    when(claims.get("type", String.class)).thenReturn("refresh");
+    when(jwtService.parse("old-refresh")).thenReturn(claims);
+    when(refreshTokens.findByTokenHash(TokenHashes.sha256Hex("old-refresh")))
+        .thenReturn(Optional.of(old));
+    when(refreshTokens.findByUserId(eq(user.getId()))).thenReturn(List.of(old, current));
+
+    ApiException ex = assertThrows(ApiException.class, () -> service.refresh("old-refresh"));
+
+    assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+    assertEquals(true, current.isRevoked());
+  }
+
+  @Test
+  void logoutRevokesToken() {
+    Organization org = org();
+    RefreshToken stored = storedToken(user(org, "a@test.example"), "tok");
+    when(refreshTokens.findByTokenHash(TokenHashes.sha256Hex("tok")))
+        .thenReturn(Optional.of(stored));
+
+    service.logout("tok");
+
+    assertEquals(true, stored.isRevoked());
+  }
+
+  private RefreshToken storedToken(AppUser user, String raw) {
+    RefreshToken record = new RefreshToken();
+    record.setId(UUID.randomUUID());
+    record.setUser(user);
+    record.setTokenHash(TokenHashes.sha256Hex(raw));
+    record.setExpiresAt(Instant.now().plusSeconds(3600));
+    record.setRevoked(false);
+    return record;
   }
 
   private Organization org() {

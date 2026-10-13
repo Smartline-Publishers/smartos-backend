@@ -33,6 +33,12 @@ public class AuthController {
     return ApiResponse.ok(authService.refresh(req.getRefreshToken()));
   }
 
+  @PostMapping("/logout")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void logout(@Valid @RequestBody RefreshRequest req) {
+    authService.logout(req.getRefreshToken());
+  }
+
   @PostMapping("/register-organization")
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<TokenResponse> registerOrganization(

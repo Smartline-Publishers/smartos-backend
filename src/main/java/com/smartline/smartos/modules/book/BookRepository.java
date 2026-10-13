@@ -14,4 +14,5 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
   Page<Book> findByOrganizationIdAndStatusAndTitleContainingIgnoreCase(
       UUID organizationId, Book.BookStatus status, String title, Pageable pageable);
   boolean existsByOrganizationIdAndIsbn(UUID organizationId, String isbn);
+  long countByOrganizationId(UUID organizationId);
 }

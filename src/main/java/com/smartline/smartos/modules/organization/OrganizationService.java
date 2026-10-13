@@ -61,6 +61,24 @@ public class OrganizationService {
     return repository.findById(id).orElseThrow(() -> ApiException.notFound("Organization", id));
   }
 
+  @Transactional(readOnly = true)
+  public Organization current() {
+    UserPrincipal principal = currentPrincipal();
+    if (principal == null || principal.getOrgId() == null) {
+      throw ApiException.forbidden("Organization access denied");
+    }
+    return repository.findById(principal.getOrgId())
+        .orElseThrow(() -> ApiException.notFound("Organization", principal.getOrgId()));
+  }
+
+  @Transactional
+  public Organization changePlan(UUID id, Organization.Plan plan) {
+    Organization org = repository.findById(id)
+        .orElseThrow(() -> ApiException.notFound("Organization", id));
+    org.setPlan(plan);
+    return repository.save(org);
+  }
+
   private UserPrincipal currentPrincipal() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     return auth != null && auth.getPrincipal() instanceof UserPrincipal principal ? principal : null;

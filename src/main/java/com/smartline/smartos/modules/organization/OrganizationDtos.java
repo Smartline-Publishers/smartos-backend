@@ -44,6 +44,7 @@ public final class OrganizationDtos {
     private String name;
     private String slug;
     private String plan;
+    private Map<String, Integer> limits;
     private Map<String, Object> settings;
     private Instant createdAt;
 
@@ -51,11 +52,12 @@ public final class OrganizationDtos {
     }
 
     public OrganizationResponse(UUID id, String name, String slug, String plan,
-        Map<String, Object> settings, Instant createdAt) {
+        Map<String, Integer> limits, Map<String, Object> settings, Instant createdAt) {
       this.id = id;
       this.name = name;
       this.slug = slug;
       this.plan = plan;
+      this.limits = limits;
       this.settings = settings;
       this.createdAt = createdAt;
     }
@@ -92,6 +94,14 @@ public final class OrganizationDtos {
       this.plan = plan;
     }
 
+    public Map<String, Integer> getLimits() {
+      return limits;
+    }
+
+    public void setLimits(Map<String, Integer> limits) {
+      this.limits = limits;
+    }
+
     public Map<String, Object> getSettings() {
       return settings;
     }
@@ -109,8 +119,12 @@ public final class OrganizationDtos {
     }
 
     public static OrganizationResponse from(Organization o) {
+      Map<String, Integer> limits = o.getPlan() != null
+          ? Map.of("maxUsers", o.getPlan().getMaxUsers(), "maxBooks", o.getPlan().getMaxBooks())
+          : Map.of();
       return new OrganizationResponse(o.getId(), o.getName(), o.getSlug(),
-          o.getPlan() != null ? o.getPlan().name() : null, o.getSettings(), o.getCreatedAt());
+          o.getPlan() != null ? o.getPlan().name() : null, limits, o.getSettings(),
+          o.getCreatedAt());
     }
   }
 }

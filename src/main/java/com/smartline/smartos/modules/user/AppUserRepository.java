@@ -13,4 +13,5 @@ public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
   Page<AppUser> findByOrganizationId(UUID organizationId, Pageable pageable);
   Optional<AppUser> findByIdAndOrganizationId(UUID id, UUID organizationId);
   List<AppUser> findByEmailIgnoreCase(String email);
+  long countByOrganizationId(UUID organizationId);
 }

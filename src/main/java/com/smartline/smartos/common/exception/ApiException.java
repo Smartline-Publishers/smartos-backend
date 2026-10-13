@@ -51,4 +51,8 @@ public class ApiException extends RuntimeException {
   public static ApiException forbidden(String message) {
     return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.FORBIDDEN.getCode(), message);
   }
+
+  public static ApiException planLimit(String message) {
+    return new ApiException(HttpStatus.FORBIDDEN, ErrorCode.PLAN_LIMIT.getCode(), message);
+  }
 }

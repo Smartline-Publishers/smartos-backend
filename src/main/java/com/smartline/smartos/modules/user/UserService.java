@@ -35,6 +35,10 @@ public class UserService {
     UUID orgId = TenantContext.require();
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
+    if (users.countByOrganizationId(orgId) >= org.getPlan().getMaxUsers()) {
+      throw ApiException.planLimit("Organization user quota reached for plan "
+          + org.getPlan().name());
+    }
     String email = req.getEmail().trim().toLowerCase();
     if (users.existsByOrganizationIdAndEmail(orgId, email)) {
       throw ApiException.conflict("User email already exists in organization: " + email);

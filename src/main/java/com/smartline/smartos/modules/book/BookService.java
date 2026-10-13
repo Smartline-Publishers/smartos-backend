@@ -48,6 +48,10 @@ public class BookService {
     }
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
+    if (books.countByOrganizationId(orgId) >= org.getPlan().getMaxBooks()) {
+      throw ApiException.planLimit("Organization book quota reached for plan "
+          + org.getPlan().name());
+    }
     Book book = new Book();
     book.setOrganization(org);
     book.setTitle(req.getTitle().trim());

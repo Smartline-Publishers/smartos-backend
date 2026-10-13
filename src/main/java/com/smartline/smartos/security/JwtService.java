@@ -85,6 +85,14 @@ public class JwtService {
     return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
   }
 
+  public long getAccessExpiryMs() {
+    return accessExpiryMs;
+  }
+
+  public long getRefreshExpiryMs() {
+    return refreshExpiryMs;
+  }
+
   public boolean isValid(String token) {
     try {
       parse(token);
