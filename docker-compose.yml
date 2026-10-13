@@ -16,7 +16,7 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartos} -d ${POSTGRES_DB:-smartos}"]
       interval: 10s
@@ -34,7 +34,8 @@ services:
     env_file:
       - .env
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@smartos.local
+      # Must look like a real domain: pgAdmin rejects reserved TLDs such as .local.
+      PGADMIN_DEFAULT_EMAIL: admin@smartlinepublishers.com
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?Set PGADMIN_PASSWORD in .env}
       PGADMIN_CONFIG_SERVER_MODE: "True"
     ports:
