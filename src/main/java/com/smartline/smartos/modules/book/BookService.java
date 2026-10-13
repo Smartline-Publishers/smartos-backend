@@ -3,12 +3,16 @@ package com.smartline.smartos.modules.book;
 import com.smartline.smartos.common.exception.ApiException;
 import com.smartline.smartos.modules.audit.Audited;
 import com.smartline.smartos.modules.book.Book.BookStatus;
+import com.smartline.smartos.modules.book.BookDtos.BookLinkResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateBookRequest;
+import com.smartline.smartos.modules.book.BookDtos.LinkContributorRequest;
 import com.smartline.smartos.modules.book.BookDtos.UpdateBookRequest;
 import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,12 +25,17 @@ public class BookService {
   private final BookRepository books;
   private final OrganizationRepository organizations;
   private final StockMovementRepository movements;
+  private final BookContributorRepository links;
+  private final ContributorRepository contributors;
 
   public BookService(BookRepository books, OrganizationRepository organizations,
-      StockMovementRepository movements) {
+      StockMovementRepository movements, BookContributorRepository links,
+      ContributorRepository contributors) {
     this.books = books;
     this.organizations = organizations;
     this.movements = movements;
+    this.links = links;
+    this.contributors = contributors;
   }
 
   @Transactional
@@ -116,5 +125,52 @@ public class BookService {
       throw ApiException.conflict("Book has inventory history and cannot be deleted");
     }
     books.delete(book);
+  }
+
+  @Transactional(readOnly = true)
+  public List<BookLinkResponse> links(UUID bookId) {
+    Book book = get(bookId);
+    List<BookLinkResponse> result = new ArrayList<>();
+    for (BookContributor link : links.findByBookId(book.getId())) {
+      Contributor contributor = link.getContributor();
+      String fullName = contributor != null ? contributor.getFullName() : null;
+      if (fullName == null && contributor != null) {
+        fullName = contributors.findByIdAndOrganizationId(contributor.getId(),
+                TenantContext.require())
+            .map(Contributor::getFullName)
+            .orElse(null);
+      }
+      result.add(BookDtos.BookMapper.toLinkResponse(link, fullName));
+    }
+    return result;
+  }
+
+  @Transactional
+  @Audited(action = "book.contributor.link", entityType = "BookContributor")
+  public BookLinkResponse linkContributor(UUID bookId, LinkContributorRequest req) {
+    UUID orgId = TenantContext.require();
+    Book book = get(bookId);
+    Contributor contributor = contributors.findByIdAndOrganizationId(req.getContributorId(), orgId)
+        .orElseThrow(() -> ApiException.notFound("Contributor", req.getContributorId()));
+    if (links.existsByBookIdAndContributorId(book.getId(), contributor.getId())) {
+      throw ApiException.conflict("Contributor is already linked to this book");
+    }
+    BookContributor link = new BookContributor();
+    link.setBook(book);
+    link.setContributor(contributor);
+    link.setRole(req.getRole() != null ? req.getRole() : "AUTHOR");
+    link.setRoyaltyPct(req.getRoyaltyPct());
+    BookContributor saved = links.save(link);
+    return BookDtos.BookMapper.toLinkResponse(saved, contributor.getFullName());
+  }
+
+  @Transactional
+  @Audited(action = "book.contributor.unlink", entityType = "BookContributor")
+  public void unlinkContributor(UUID bookId, UUID contributorId) {
+    Book book = get(bookId);
+    if (!links.existsByBookIdAndContributorId(book.getId(), contributorId)) {
+      throw ApiException.notFound("BookContributor", contributorId);
+    }
+    links.deleteByBookIdAndContributorId(book.getId(), contributorId);
   }
 }

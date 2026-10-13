@@ -3,8 +3,10 @@ package com.smartline.smartos.modules.book;
 import com.smartline.smartos.common.ApiResponse;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.book.Book.BookStatus;
+import com.smartline.smartos.modules.book.BookDtos.BookLinkResponse;
 import com.smartline.smartos.modules.book.BookDtos.BookResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateBookRequest;
+import com.smartline.smartos.modules.book.BookDtos.LinkContributorRequest;
 import com.smartline.smartos.modules.book.BookDtos.UpdateBookRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -45,7 +47,8 @@ public class BookController {
   @GetMapping("/{id}")
   @PreAuthorize("isAuthenticated()")
   public ApiResponse<BookResponse> get(@PathVariable UUID id) {
-    return ApiResponse.ok(BookDtos.BookMapper.toResponse(service.get(id)));
+    return ApiResponse.ok(
+        BookDtos.BookMapper.toResponse(service.get(id), service.links(id)));
   }
 
   @PostMapping
@@ -67,5 +70,20 @@ public class BookController {
   @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
+  }
+
+  @PostMapping("/{id}/contributors")
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  public ApiResponse<BookLinkResponse> linkContributor(@PathVariable UUID id,
+      @Valid @RequestBody LinkContributorRequest req) {
+    return ApiResponse.ok(service.linkContributor(id, req));
+  }
+
+  @DeleteMapping("/{id}/contributors/{contributorId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  public void unlinkContributor(@PathVariable UUID id, @PathVariable UUID contributorId) {
+    service.unlinkContributor(id, contributorId);
   }
 }

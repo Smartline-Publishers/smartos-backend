@@ -3,6 +3,7 @@ package com.smartline.smartos.modules.book;
 import com.smartline.smartos.common.exception.ApiException;
 import com.smartline.smartos.modules.audit.Audited;
 import com.smartline.smartos.modules.book.BookDtos.CreateContributorRequest;
+import com.smartline.smartos.modules.finance.ContractRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
@@ -17,10 +18,13 @@ public class ContributorService {
 
   private final ContributorRepository contributors;
   private final OrganizationRepository organizations;
+  private final ContractRepository contracts;
 
-  public ContributorService(ContributorRepository contributors, OrganizationRepository organizations) {
+  public ContributorService(ContributorRepository contributors,
+      OrganizationRepository organizations, ContractRepository contracts) {
     this.contributors = contributors;
     this.organizations = organizations;
+    this.contracts = contracts;
   }
 
   @Transactional
@@ -51,6 +55,10 @@ public class ContributorService {
 
   @Transactional
   public void delete(UUID id) {
-    contributors.delete(get(id));
+    Contributor contributor = get(id);
+    if (contracts.existsByContributorId(contributor.getId())) {
+      throw ApiException.conflict("Contributor has contracts and cannot be deleted");
+    }
+    contributors.delete(contributor);
   }
 }

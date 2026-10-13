@@ -9,7 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.modules.book.BookDtos.BookLinkResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateBookRequest;
+import com.smartline.smartos.modules.book.BookDtos.LinkContributorRequest;
 import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
@@ -30,13 +32,15 @@ class BookServiceTest {
   @Mock private BookRepository books;
   @Mock private OrganizationRepository organizations;
   @Mock private StockMovementRepository movements;
+  @Mock private BookContributorRepository links;
+  @Mock private ContributorRepository contributors;
 
   private BookService service;
   private UUID orgId;
 
   @BeforeEach
   void setUp() {
-    service = new BookService(books, organizations, movements);
+    service = new BookService(books, organizations, movements, links, contributors);
     orgId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
   }
@@ -98,5 +102,74 @@ class BookServiceTest {
     service.delete(book.getId());
 
     verify(books).delete(eq(book));
+  }
+
+  @Test
+  void linkContributorCreatesLink() {
+    Book book = book();
+    Contributor contributor = contributor();
+    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+        .thenReturn(Optional.of(book));
+    when(contributors.findByIdAndOrganizationId(eq(contributor.getId()), eq(orgId)))
+        .thenReturn(Optional.of(contributor));
+    when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributor.getId())))
+        .thenReturn(false);
+    when(links.save(any(BookContributor.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    LinkContributorRequest req = new LinkContributorRequest();
+    req.setContributorId(contributor.getId());
+    req.setRole("AUTHOR");
+    BookLinkResponse link = service.linkContributor(book.getId(), req);
+
+    assertEquals(contributor.getId(), link.getContributorId());
+    assertEquals("Ama Serwaa", link.getFullName());
+  }
+
+  @Test
+  void duplicateLinkThrows409() {
+    Book book = book();
+    Contributor contributor = contributor();
+    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+        .thenReturn(Optional.of(book));
+    when(contributors.findByIdAndOrganizationId(eq(contributor.getId()), eq(orgId)))
+        .thenReturn(Optional.of(contributor));
+    when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributor.getId())))
+        .thenReturn(true);
+
+    LinkContributorRequest req = new LinkContributorRequest();
+    req.setContributorId(contributor.getId());
+
+    ApiException ex = assertThrows(ApiException.class,
+        () -> service.linkContributor(book.getId(), req));
+
+    assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+  }
+
+  @Test
+  void unlinkMissingLinkThrows404() {
+    Book book = book();
+    UUID contributorId = UUID.randomUUID();
+    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+        .thenReturn(Optional.of(book));
+    when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributorId)))
+        .thenReturn(false);
+
+    ApiException ex = assertThrows(ApiException.class,
+        () -> service.unlinkContributor(book.getId(), contributorId));
+
+    assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+  }
+
+  private Book book() {
+    Book book = new Book();
+    book.setId(UUID.randomUUID());
+    return book;
+  }
+
+  private Contributor contributor() {
+    Contributor contributor = new Contributor();
+    contributor.setId(UUID.randomUUID());
+    contributor.setFullName("Ama Serwaa");
+    return contributor;
   }
 }

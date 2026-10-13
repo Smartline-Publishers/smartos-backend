@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.smartline.smartos.modules.finance.ContractRepository;
 import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
@@ -28,6 +29,8 @@ class TenantIsolationTest {
   @Mock private ContributorRepository contributors;
   @Mock private OrganizationRepository organizations;
   @Mock private StockMovementRepository movements;
+  @Mock private BookContributorRepository links;
+  @Mock private ContractRepository contracts;
 
   @AfterEach
   void tearDown() {
@@ -41,7 +44,7 @@ class TenantIsolationTest {
     var pageable = PageRequest.of(0, 10);
     when(books.findByOrganizationId(eq(orgA), eq(pageable))).thenReturn(Page.empty(pageable));
 
-    new BookService(books, organizations, movements).list(null, null, pageable);
+    new BookService(books, organizations, movements, links, contributors).list(null, null, pageable);
 
     verify(books).findByOrganizationId(eq(orgA), eq(pageable));
   }
@@ -55,7 +58,7 @@ class TenantIsolationTest {
     when(contributors.findByOrganizationId(eq(orgA), eq(pageable)))
         .thenReturn(Page.empty(pageable));
 
-    new ContributorService(contributors, organizations).list(pageable);
+    new ContributorService(contributors, organizations, contracts).list(pageable);
 
     verify(contributors).findByOrganizationId(eq(orgA), eq(pageable));
     // orgB must never leak into the query for orgA's context

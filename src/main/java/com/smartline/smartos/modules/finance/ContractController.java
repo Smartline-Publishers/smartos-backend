@@ -1,0 +1,79 @@
+package com.smartline.smartos.modules.finance;
+
+import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.PageResponse;
+import com.smartline.smartos.modules.book.ContributorRepository;
+import com.smartline.smartos.modules.finance.RoyaltyDtos.ContractResponse;
+import com.smartline.smartos.modules.finance.RoyaltyDtos.CreateContractRequest;
+import com.smartline.smartos.modules.finance.RoyaltyDtos.RoyaltyMapper;
+import com.smartline.smartos.tenant.TenantContext;
+import jakarta.validation.Valid;
+import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1/royalties/contracts")
+public class ContractController {
+
+  private final ContractService service;
+  private final ContributorRepository contributors;
+
+  public ContractController(ContractService service, ContributorRepository contributors) {
+    this.service = service;
+    this.contributors = contributors;
+  }
+
+  private ContractResponse withName(Contract contract) {
+    UUID orgId = TenantContext.require();
+    String name = contract.getContributor() != null ? contract.getContributor().getFullName() : null;
+    if (name == null && contract.getContributor() != null) {
+      name = contributors.findByIdAndOrganizationId(contract.getContributor().getId(), orgId)
+          .map(c -> c.getFullName())
+          .orElse(null);
+    }
+    return RoyaltyMapper.toResponse(contract, name);
+  }
+
+  @GetMapping
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<PageResponse<ContractResponse>> list(Pageable pageable) {
+    return ApiResponse.ok(PageResponse.from(
+        service.list(pageable).map(this::withName)));
+  }
+
+  @GetMapping("/{id}")
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<ContractResponse> get(@PathVariable UUID id) {
+    return ApiResponse.ok(withName(service.get(id)));
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  public ApiResponse<ContractResponse> create(@Valid @RequestBody CreateContractRequest req) {
+    return ApiResponse.ok(withName(service.create(req)));
+  }
+
+  @PostMapping("/{id}/terminate")
+  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  public ApiResponse<ContractResponse> terminate(@PathVariable UUID id) {
+    return ApiResponse.ok(withName(service.terminate(id)));
+  }
+
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  public void delete(@PathVariable UUID id) {
+    service.delete(id);
+  }
+}
