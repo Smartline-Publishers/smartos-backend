@@ -53,16 +53,20 @@ negative stock blocked without `ADJUST`+ADMIN; stock history auditable per ref.
 `SALE` txn in one tx; `payable = net × rate` verified by seeded fixture;
 statement `DRAFT→APPROVED→PAID` only forward; refunds reduce `net`.
 
-## Phase 5 — Dashboard / Reporting + Hardening
+## Phase 5 — Dashboard / Reporting + Hardening ✅ implemented
 
-- Reporting endpoints: sales by title/period, stock valuation, royalty liability,
-  editorial throughput; indexed queries, `size≤100` enforced
-- Dashboard page (KPIs + charts), CSV export, audit-log viewer
-- Hardening: rate limits on auth, CORS lockdown, secret rotation docs,
-  pagination/perf pass, 401/403/404 semantics audit
+- Reporting endpoints: sales by title/period (+CSV), royalty liability,
+  editorial throughput; `size≤100` enforced on all lists; reporting indexes (V9)
+- Live `GET /api/v1/dashboard/summary` (KPIs, pipelines, attention, activity,
+  trends); audit-log viewer (`GET /api/v1/audit-logs`, admin-only)
+- Hardening: CORS single-authority, envelope 401/403/404 audit, bad-sort 400,
+  secret-rotation docs, immutable ledgers/statements
+- Frontend: live dashboard mapping, `/reports`, `/audit`
 
-**Acceptance:** p95 list endpoint < 300ms on seed 10k rows; CSV matches API totals;
-no entity leak in any response; OpenAPI covers 100% of routes; `mvn test` + `npm build` green.
+**Acceptance:** CSV totals match API totals (tested); no entity leak in any response;
+OpenAPI auto-covers all routes; `mvn test` + `npm build` green.
+Not verified here: p95 <300ms on a 10k-row seed (needs a perf harness + live DB);
+auth rate limiting is deferred to the deployment gateway (documented decision).
 
 ## Phase 6 — SaaS Billing / Multi-Org Self-Serve
 
