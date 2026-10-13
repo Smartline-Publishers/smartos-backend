@@ -6,9 +6,12 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuditService {
@@ -42,5 +45,10 @@ public class AuditService {
       return principal.getUserId();
     }
     return null;
+  }
+
+  @Transactional(readOnly = true)
+  public Page<AuditLog> list(Pageable pageable) {
+    return repository.findByOrganizationIdOrderByCreatedAtDesc(TenantContext.require(), pageable);
   }
 }

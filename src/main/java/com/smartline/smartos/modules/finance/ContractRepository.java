@@ -12,4 +12,5 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
   Page<Contract> findByOrganizationId(UUID organizationId, Pageable pageable);
   List<Contract> findByContributorId(UUID contributorId);
   boolean existsByContributorId(UUID contributorId);
+  List<Contract> findByOrganizationId(UUID organizationId);
 }
