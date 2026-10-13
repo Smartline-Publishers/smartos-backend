@@ -15,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableMethodSecurity
@@ -22,16 +23,24 @@ public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final ObjectMapper objectMapper;
+  private final CorsConfigurationSource corsConfigurationSource;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper,
+      CorsConfigurationSource corsConfigurationSource) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     this.objectMapper = objectMapper;
+    this.corsConfigurationSource = corsConfigurationSource;
   }
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
         .csrf(AbstractHttpConfigurer::disable)
+        // CorsFilter answers preflights here, before authentication: without
+        // this, an OPTIONS request without credentials falls through to the
+        // 401 entry point below, which carries no CORS headers, and browsers
+        // block the real request.
+        .cors(cors -> cors.configurationSource(corsConfigurationSource))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         // Filter-chain rejections happen before controllers, so @RestControllerAdvice
         // cannot map them: return the same ApiResponse envelope for 401/403 here.
