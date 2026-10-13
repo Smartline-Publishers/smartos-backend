@@ -63,7 +63,7 @@ function Get-JwtKeyBytes([string]$s) {
 
 $envPath = Resolve-EnvPath $EnvFile
 if (-not (Test-Path -LiteralPath $envPath)) {
-  Write-Error "Env file not found: $envPath. Copy .env.example to .env and fill in real values."
+  Write-Error "Env file not found: $envPath. Create a local .env (never committed) - see README Prerequisites for the required variables."
   exit 1
 }
 
@@ -79,8 +79,8 @@ if ($missing.Count -gt 0) {
 }
 
 $jwt = [System.Environment]::GetEnvironmentVariable("JWT_SECRET")
-if ($jwt -like "*REPLACE_WITH*") {
-  Write-Warning "JWT_SECRET still looks like the .env.example placeholder. Generate one: openssl rand -base64 48"
+if ($jwt -like "*REPLACE_WITH*" -or $jwt -like "*change-me*") {
+  Write-Warning "JWT_SECRET still looks like a placeholder. Generate one: openssl rand -base64 48"
 }
 $bytes = (Get-JwtKeyBytes $jwt).Length
 if ($bytes -lt 32) {

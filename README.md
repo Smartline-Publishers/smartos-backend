@@ -14,7 +14,22 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 
 - JDK 21+
 - Docker + Docker Compose (local Postgres only; the API itself runs locally)
-- Copy `.env.example` → `.env` and set `POSTGRES_PASSWORD`, `DB_PASSWORD` (same value), and `JWT_SECRET` (≥32 random bytes, e.g. `openssl rand -base64 32`)
+- A local `.env` file (never committed — company policy excludes all env files
+  from git). Create it with these variables (see Configuration below for details):
+
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=smartos
+POSTGRES_USER=smartos
+POSTGRES_PASSWORD=<strong password>
+DB_URL=jdbc:postgresql://localhost:5432/smartos
+DB_USER=smartos
+DB_PASSWORD=<same strong password>
+JWT_SECRET=<output of: openssl rand -base64 48>
+CORS_ORIGINS=http://localhost:3000
+PGADMIN_PASSWORD=<any local value>
+```
 
 ## Quickstart
 
@@ -39,20 +54,23 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 
 ```text
 ./                          # this repo
-├── docker-compose.yml      # local Postgres (db service only)
-├── .env.example            # copy to .env (never commit .env)
-├── docs/                   # ARCHITECTURE, DATABASE, API_CONVENTIONS, ROADMAP
+├── docker-compose.yml      # local Postgres + pgAdmin
+├── .env                    # local only, never committed (see Prerequisites)
+├── docs/                   # ARCHITECTURE, DATABASE, API_CONVENTIONS, ROADMAP, ADR-001
 ├── mvnw / mvnw.cmd         # Maven wrapper (downloads Maven on first use)
+├── run-local.ps1           # loads .env, validates, starts the API
 ├── pom.xml
 └── src/
     ├── main/java/com/smartline/smartos/
     │   ├── config/         # OpenAPI, CORS, JPA auditing, Jackson
-    │   ├── common/         # ApiResponse envelope, PageResponse, exceptions
+    │   ├── common/         # ApiResponse envelope, PageResponse, exceptions, paging
     │   ├── tenant/         # TenantContext, JWT/header interceptor
     │   ├── security/       # JwtService, filter, roles, auth DTOs
-    │   └── modules/        # organization, user (auth), book, audit
-    ├── main/resources/     # application.yml, db/migration/V1-V3
-    └── test/               # service + tenant-isolation + web-slice tests
+    │   └── modules/        # organization, user, book, manuscript, task,
+    │                       # production, inventory, sales, finance, billing,
+    │                       # audit, reporting, dashboard
+    ├── main/resources/     # application.yml, db/migration/V1-V10
+    └── test/               # service, tenant-isolation, web-slice, contract tests
 ```
 
 ## Configuration

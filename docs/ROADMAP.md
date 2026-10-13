@@ -2,7 +2,7 @@
 
 ## Phase 0 — Foundation (this stage) ✅ scope
 
-- [ ] Backend repo: `README.md`, `docker-compose.yml`, `.env.example`, `.gitignore`, `docs\`
+- [ ] Backend repo: `README.md`, `docker-compose.yml`, local `.env` (per README), `.gitignore`, `docs\`
 - [ ] Backend skeleton boots: health endpoint, OpenAPI, Flyway empty baseline, JWT filter stub
 - [ ] Frontend shell boots: App Router layout, login page stub, api-client stub
 

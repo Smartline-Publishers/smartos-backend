@@ -5,8 +5,9 @@ target/
 # Maven wrapper binary (re-downloaded by mvnw/mvnw.cmd on first use)
 .mvn/wrapper/maven-wrapper.jar
 
-# Env / secrets (see .env.example)
+# Env / secrets (company policy: no env files in git, not even templates)
 .env
+.env.example
 
 # OS / IDE
 .DS_Store
