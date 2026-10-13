@@ -31,7 +31,7 @@ dup ISBN same org → 409, different org → 201; audit row per mutation; pagina
 **Acceptance:** illegal skip `SUBMITTED→APPROVED` → 400 with message; version bumps on content
 edit; tasks filtered by `?status&assigneeId`; stage history persisted (`manuscript_events`).
 
-## Phase 3 — Production / Inventory
+## Phase 3 — Production / Inventory ✅ implemented
 
 - Production jobs lifecycle + print runs (immutable once posted)
 - Warehouses + stock movements; `SUM(qty_delta)` stock view; transfer support
