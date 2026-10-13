@@ -22,13 +22,10 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 # 1. Start Postgres (compose reads .env in this directory)
 docker compose up db -d
 
-# 2. Export datasource credentials (the API reads process env, not .env)
-# PowerShell: $env:DB_USER='smartos'; $env:DB_PASSWORD='<from .env>'; $env:JWT_SECRET='<from .env>'
-# bash: export DB_USER=smartos DB_PASSWORD='<from .env>' JWT_SECRET='<from .env>'
-
-# 3. Run the API (Windows: .\mvnw.cmd spring-boot:run)
-/mvnw spring-boot:run
-```
+# 2. Run the API — the script loads .env, validates it, then starts Maven.
+# (Spring Boot reads process env, not .env files, so export manually only
+# if you are not using the script.)
+.\run-local.ps1
 
 | Service  | URL                            |
 |----------|--------------------------------|
