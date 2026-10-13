@@ -13,10 +13,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,27 +27,13 @@ import org.springframework.test.web.servlet.MockMvc;
 class AuthFlowTest {
 
   @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private AuthService authService;
+  // Plain mapper: the test only serializes the request body, and Boot 4's MVC
+  // slice no longer provides a Spring-configured ObjectMapper bean.
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
-  /**
-   * Explicit Mockito beans instead of the deprecated {@code @MockBean}.
-   * Verified: neither Boot 3.4 nor 3.5 ships its successor
-   * ({@code @MockitoBean} arrives with Boot 4), so mocks are declared as beans.
-   * JwtService satisfies the JwtAuthenticationFilter @Component in the slice.
-   */
-  @TestConfiguration
-  static class MockConfig {
-    @Bean
-    AuthService authService() {
-      return Mockito.mock(AuthService.class);
-    }
-
-    @Bean
-    JwtService jwtService() {
-      return Mockito.mock(JwtService.class);
-    }
-  }
+  // JwtService satisfies the JwtAuthenticationFilter @Component in the slice.
+  @MockitoBean private AuthService authService;
+  @MockitoBean private JwtService jwtService;
 
   @Test
   void loginReturnsToken() throws Exception {

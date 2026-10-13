@@ -1,13 +1,13 @@
 # SmartOS Backend
 
-Spring Boot 3 REST API for SmartOS, the publishing management platform for Smartline Publishers Ltd. Modular monolith, shared-schema multi-tenancy (`organization_id`), JWT auth, Flyway migrations, OpenAPI docs.
+Spring Boot 4 REST API for SmartOS, the publishing management platform for Smartline Publishers Ltd. Modular monolith, shared-schema multi-tenancy (`organization_id`), JWT auth, Flyway migrations, OpenAPI docs.
 
 Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design, schema, conventions, and program roadmap live in `docs/`.
 
 ## Stack
 
 - Java 21 bytecode (runs on JDK 21+; verified on JDK 25), Maven wrapper (`mvnw` / `mvnw.cmd` — no local Maven needed)
-- Spring Boot 3.4: Web, Data JPA, Security + JJWT, Validation, AOP (audit), Flyway, PostgreSQL driver, Springdoc OpenAPI
+- Spring Boot 4.1: Web, Data JPA, Security + JJWT, Validation, AOP (audit), Flyway, PostgreSQL driver, Springdoc OpenAPI
 - Tests: JUnit 5 + Mockito (`src/test`)
 
 ## Prerequisites
