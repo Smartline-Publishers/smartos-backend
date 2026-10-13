@@ -55,9 +55,12 @@
       <groupId>org.aspectj</groupId>
       <artifactId>aspectjweaver</artifactId>
     </dependency>
+    <!-- Boot 4 modularized Flyway: the starter (not bare flyway-core) puts
+         the Flyway auto-configuration module on the classpath, which is what
+         actually runs migrations at startup. -->
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
