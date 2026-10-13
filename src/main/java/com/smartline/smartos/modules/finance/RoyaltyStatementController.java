@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.finance;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.finance.RoyaltyDtos.GenerateStatementRequest;
 import com.smartline.smartos.modules.finance.RoyaltyDtos.RoyaltyMapper;
@@ -36,7 +37,7 @@ public class RoyaltyStatementController {
       @RequestParam(required = false) StatementStatus status,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(status, pageable).map(RoyaltyMapper::toResponse)));
+        service.list(status, Paging.capped(pageable)).map(RoyaltyMapper::toResponse)));
   }
 
   @GetMapping("/{id}")

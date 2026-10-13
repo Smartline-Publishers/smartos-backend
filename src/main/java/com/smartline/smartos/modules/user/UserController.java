@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.user;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.user.UserDtos.CreateUserRequest;
 import com.smartline.smartos.modules.user.UserDtos.UpdateUserRequest;
@@ -33,7 +34,7 @@ public class UserController {
   @GetMapping
   @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
   public ApiResponse<PageResponse<UserResponse>> list(Pageable pageable) {
-    return ApiResponse.ok(PageResponse.from(service.list(pageable).map(UserResponse::from)));
+    return ApiResponse.ok(PageResponse.from(service.list(Paging.capped(pageable)).map(UserResponse::from)));
   }
 
   @GetMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.book;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.book.Book.BookStatus;
 import com.smartline.smartos.modules.book.BookDtos.BookLinkResponse;
@@ -41,7 +42,7 @@ public class BookController {
       @RequestParam(required = false) String search,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(status, search, pageable).map(BookDtos.BookMapper::toResponse)));
+        service.list(status, search, Paging.capped(pageable)).map(BookDtos.BookMapper::toResponse)));
   }
 
   @GetMapping("/{id}")

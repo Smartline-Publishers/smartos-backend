@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.finance;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.finance.FinanceDtos.BudgetResponse;
 import com.smartline.smartos.modules.finance.FinanceDtos.CreateBudgetRequest;
@@ -35,7 +36,7 @@ public class BudgetController {
   @PreAuthorize("isAuthenticated()")
   public ApiResponse<PageResponse<BudgetResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(pageable).map(b -> service.withActuals(b.getId()))));
+        service.list(Paging.capped(pageable)).map(b -> service.withActuals(b.getId()))));
   }
 
   @GetMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.task;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskDtos.CreateTaskRequest;
@@ -41,7 +42,7 @@ public class TaskController {
       @RequestParam(required = false) UUID assigneeId,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(status, search, assigneeId, pageable).map(TaskMapper::toResponse)));
+        service.list(status, search, assigneeId, Paging.capped(pageable)).map(TaskMapper::toResponse)));
   }
 
   @GetMapping("/{id}")

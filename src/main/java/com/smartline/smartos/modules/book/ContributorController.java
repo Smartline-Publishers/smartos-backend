@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.book;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.book.BookDtos.ContributorResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateContributorRequest;
@@ -32,7 +33,7 @@ public class ContributorController {
   @PreAuthorize("isAuthenticated()")
   public ApiResponse<PageResponse<ContributorResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(pageable).map(BookDtos.BookMapper::toResponse)));
+        service.list(Paging.capped(pageable)).map(BookDtos.BookMapper::toResponse)));
   }
 
   @GetMapping("/{id}")

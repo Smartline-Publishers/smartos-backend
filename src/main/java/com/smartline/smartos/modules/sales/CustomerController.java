@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.sales;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.sales.SalesDtos.CreateCustomerRequest;
 import com.smartline.smartos.modules.sales.SalesDtos.CustomerMapper;
@@ -38,7 +39,7 @@ public class CustomerController {
       @RequestParam(required = false) String search,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(search, pageable).map(CustomerMapper::toResponse)));
+        service.list(search, Paging.capped(pageable)).map(CustomerMapper::toResponse)));
   }
 
   @GetMapping("/{id}")

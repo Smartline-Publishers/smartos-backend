@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.inventory;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.inventory.InventoryDtos.CreateMovementRequest;
 import com.smartline.smartos.modules.inventory.InventoryDtos.InventoryMapper;
@@ -38,7 +39,7 @@ public class InventoryController {
       @RequestParam(required = false) UUID warehouseId,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.listMovements(bookId, warehouseId, pageable).map(InventoryMapper::toResponse)));
+        service.listMovements(bookId, warehouseId, Paging.capped(pageable)).map(InventoryMapper::toResponse)));
   }
 
   @PostMapping("/movements")

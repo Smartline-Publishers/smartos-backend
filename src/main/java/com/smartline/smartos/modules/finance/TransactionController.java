@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.finance;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.finance.FinanceDtos.CreateTransactionRequest;
 import com.smartline.smartos.modules.finance.FinanceDtos.FinanceMapper;
@@ -35,7 +36,7 @@ public class TransactionController {
       @RequestParam(required = false) String category,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(type, category, pageable).map(FinanceMapper::toResponse)));
+        service.list(type, category, Paging.capped(pageable)).map(FinanceMapper::toResponse)));
   }
 
   @PostMapping

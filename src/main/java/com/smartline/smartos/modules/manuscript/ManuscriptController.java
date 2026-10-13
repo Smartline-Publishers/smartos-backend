@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.manuscript;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.manuscript.Manuscript.ManuscriptStage;
 import com.smartline.smartos.modules.manuscript.ManuscriptDtos.CreateManuscriptRequest;
@@ -42,7 +43,7 @@ public class ManuscriptController {
       @RequestParam(required = false) String search,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(stage, search, pageable)
+        service.list(stage, search, Paging.capped(pageable))
             .map(m -> ManuscriptMapper.toResponse(m, List.of()))));
   }
 

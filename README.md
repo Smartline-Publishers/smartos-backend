@@ -68,6 +68,16 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 
 Never commit `.env`. `ddl-auto` is `validate`: schema changes go through `src/main/resources/db/migration/V<seq>__<name>.sql` (forward-only).
 
+## Secret rotation
+
+- **JWT_SECRET:** change the value and restart — all previously issued tokens
+  invalidate immediately (stateless verification against the new key). No DB change.
+- **DB_PASSWORD:** `ALTER USER smartos WITH PASSWORD '<new>'` inside Postgres,
+  then update `.env` (`POSTGRES_PASSWORD` + `DB_PASSWORD`) and restart the API.
+  Keep both in sync or the container and the app disagree.
+- CORS origins are an allowlist: production deployments must set
+  `CORS_ORIGINS` to the exact frontend origin(s); the localhost default is dev-only.
+
 ## Testing
 
 ```bash

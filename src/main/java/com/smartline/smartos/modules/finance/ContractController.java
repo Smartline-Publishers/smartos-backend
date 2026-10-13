@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.finance;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.book.ContributorRepository;
 import com.smartline.smartos.modules.finance.RoyaltyDtos.ContractResponse;
@@ -48,7 +49,7 @@ public class ContractController {
   @PreAuthorize("isAuthenticated()")
   public ApiResponse<PageResponse<ContractResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(pageable).map(this::withName)));
+        service.list(Paging.capped(pageable)).map(this::withName)));
   }
 
   @GetMapping("/{id}")

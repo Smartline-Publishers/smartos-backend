@@ -2,6 +2,7 @@ package com.smartline.smartos.common.exception;
 
 public enum ErrorCode {
   VALIDATION_ERROR("VALIDATION_ERROR"),
+  INVALID_SORT("INVALID_SORT"),
   NOT_FOUND("NOT_FOUND"),
   CONFLICT("CONFLICT"),
   UNAUTHORIZED("UNAUTHORIZED"),

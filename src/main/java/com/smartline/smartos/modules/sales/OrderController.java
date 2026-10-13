@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.sales;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.sales.Order.OrderStatus;
 import com.smartline.smartos.modules.sales.SalesDtos.CreateOrderRequest;
@@ -44,7 +45,7 @@ public class OrderController {
       @RequestParam(required = false) UUID customerId,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.list(status, customerId, pageable).map(this::withItems)));
+        service.list(status, customerId, Paging.capped(pageable)).map(this::withItems)));
   }
 
   @GetMapping("/{id}")

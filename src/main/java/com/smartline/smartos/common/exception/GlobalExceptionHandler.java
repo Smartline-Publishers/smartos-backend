@@ -4,6 +4,7 @@ import com.smartline.smartos.common.ApiResponse;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -28,6 +29,13 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<?>> handleApi(ApiException ex) {
     return ResponseEntity.status(ex.getStatus())
         .body(ApiResponse.error(ex.getCode(), ex.getMessage(), ex.getFields()));
+  }
+
+  @ExceptionHandler(PropertyReferenceException.class)
+  public ResponseEntity<ApiResponse<?>> handleBadSort(PropertyReferenceException ex) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ErrorCode.INVALID_SORT.getCode(),
+            "Unknown sort property: " + ex.getPropertyName(), null));
   }
 
   @ExceptionHandler(AccessDeniedException.class)

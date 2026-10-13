@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.production;
 
 import com.smartline.smartos.common.ApiResponse;
+import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.production.ProductionDtos.CreateJobRequest;
 import com.smartline.smartos.modules.production.ProductionDtos.CreateRunRequest;
@@ -49,7 +50,7 @@ public class ProductionJobController {
       @RequestParam(required = false) UUID bookId,
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
-        service.listJobs(status, bookId, pageable).map(this::withRuns)));
+        service.listJobs(status, bookId, Paging.capped(pageable)).map(this::withRuns)));
   }
 
   @GetMapping("/{id}")
