@@ -21,15 +21,15 @@ backend and frontend evolve in their own repos (`smartos-backend\`, `smartos\`).
 dup ISBN same org → 409, different org → 201; audit row per mutation; paginated
 `GET /api/v1/books` envelope + OpenAPI documented.
 
-## Phase 2 — Manuscripts / Editorial + Tasks
+## Phase 2 — Manuscripts / Editorial + Tasks ✅ implemented
 
 - Manuscripts + stage machine (`SUBMITTED→REVIEW→EDITING→PROOF→APPROVED`), guards
 - File ref (`file_url` stub, no binary store yet), version increment on edit
 - Tasks CRUD with assignee/due/status, links to book/manuscript
 - Frontend: manuscript board (stage columns), task list with filters
 
-**Acceptance:** illegal skip `SUBMITTED→APPROVED` → 422; version bumps on content
-edit; tasks filtered by `?status&assigneeId`; stage history persisted.
+**Acceptance:** illegal skip `SUBMITTED→APPROVED` → 400 with message; version bumps on content
+edit; tasks filtered by `?status&assigneeId`; stage history persisted (`manuscript_events`).
 
 ## Phase 3 — Production / Inventory
 
