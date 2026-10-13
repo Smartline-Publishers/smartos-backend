@@ -21,7 +21,6 @@ import com.smartline.smartos.modules.manuscript.ManuscriptRepository;
 import com.smartline.smartos.modules.task.Task;
 import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskRepository;
-import com.smartline.smartos.modules.user.AppUser;
 import com.smartline.smartos.modules.user.AppUserRepository;
 import com.smartline.smartos.tenant.TenantContext;
 import java.math.BigDecimal;

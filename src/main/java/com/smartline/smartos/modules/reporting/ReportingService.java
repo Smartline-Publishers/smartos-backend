@@ -2,7 +2,6 @@ package com.smartline.smartos.modules.reporting;
 
 import com.smartline.smartos.modules.finance.ContractRepository;
 import com.smartline.smartos.modules.finance.RoyaltyStatement;
-import com.smartline.smartos.modules.finance.RoyaltyStatement.StatementStatus;
 import com.smartline.smartos.modules.finance.RoyaltyStatementRepository;
 import com.smartline.smartos.modules.finance.Transaction;
 import com.smartline.smartos.modules.finance.Transaction.TransactionType;
