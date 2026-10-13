@@ -31,9 +31,9 @@ class AuthFlowTest {
   @Autowired private AuthService authService;
 
   /**
-   * Explicit Mockito beans instead of the deprecated {@code @MockBean}: the
-   * project's Spring Boot 3.4 does not ship its replacement
-   * ({@code @MockitoBean} arrives in Boot 3.5), so mocks are declared as beans.
+   * Explicit Mockito beans instead of the deprecated {@code @MockBean}.
+   * Verified: neither Boot 3.4 nor 3.5 ships its successor
+   * ({@code @MockitoBean} arrives with Boot 4), so mocks are declared as beans.
    * JwtService satisfies the JwtAuthenticationFilter @Component in the slice.
    */
   @TestConfiguration
