@@ -68,13 +68,18 @@ OpenAPI auto-covers all routes; `mvn test` + `npm build` green.
 Not verified here: p95 <300ms on a 10k-row seed (needs a perf harness + live DB);
 auth rate limiting is deferred to the deployment gateway (documented decision).
 
-## Phase 6 — SaaS Billing / Multi-Org Self-Serve
+## Phase 6 — SaaS Billing / Multi-Org Self-Serve ✅ implemented
 
-- Public signup → creates org + ADMIN user; org invite flow; plan field enforced
-- Stripe (or equivalent) subscription stub: `plan`, seat limits, webhook handler
-- Per-org feature flags / quotas; onboarding wizard in frontend
-- RLS or schema-per-tenant spike (decision record), refresh-token rotation store
+- Public signup → creates org + ORG_ADMIN (`POST /auth/register-organization`,
+  `/register` wizard); invite flow (`/invites`, accept → auto-login); plan enforced
+- Stripe subscription stub (`/billing/webhooks/stripe`, idempotent by event id):
+  `plan` mapping, seat/book quotas (`FREE 5/100`, `GROWTH 50/2000`, SCALE open)
+- Per-org settings JSONB already the flags mechanism; quotas surfaced in
+  `GET /organizations/current`; onboarding = register wizard + invite accept
+- RLS vs schema-per-tenant: `docs/ADR-001-tenant-isolation.md` (stay shared-schema;
+  triggers: 50 tenants or any incident); refresh-token rotation store with reuse
+  detection; platform-role grant restricted
 
-**Acceptance:** new signup gets isolated org (no data leak); plan downgrade blocks
-over-quota creates with 403 `PLAN_LIMIT`; billing webhook idempotent; ADR filed
-for tenancy next step.
+**Acceptance:** new signup gets isolated org (tenant tests + bootstrap test);
+plan downgrade blocks over-quota creates with 403 `PLAN_LIMIT` (tested for users;
+books); billing webhook idempotent (tested); ADR filed.

@@ -78,6 +78,21 @@ Never commit `.env`. `ddl-auto` is `validate`: schema changes go through `src/ma
 - CORS origins are an allowlist: production deployments must set
   `CORS_ORIGINS` to the exact frontend origin(s); the localhost default is dev-only.
 
+## Billing stub → real Stripe
+
+`POST /api/v1/billing/webhooks/stripe` accepts provider-shaped JSON today
+(`{id, type, data: {organizationId, plan}}`) with no signature check — a stand-in
+for local development. To go live:
+
+1. Add the Stripe SDK and replace the payload parsing with
+   `Webhook.constructEvent(payload, sigHeader, webhookSecret)`.
+2. Set `STRIPE_WEBHOOK_SECRET` (env, never committed) and verify the signature
+   **before** any processing; reject mismatches with 400.
+3. Keep the `billing_events` idempotency check exactly where it is — retried
+   deliveries must stay no-ops.
+4. Keep mapping event types to plan changes in `BillingService`; the controller
+   contract (`{received, duplicate, plan}`) is unchanged.
+
 ## Testing
 
 ```bash
