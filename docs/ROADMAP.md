@@ -41,12 +41,13 @@ edit; tasks filtered by `?status&assigneeId`; stage history persisted (`manuscri
 **Acceptance:** posting run adjusts stock atomically (fail → rollback);
 negative stock blocked without `ADJUST`+ADMIN; stock history auditable per ref.
 
-## Phase 4 — Sales / Finance / Royalties
+## Phase 4 — Sales / Finance / Royalties ✅ implemented
 
 - Customers, orders + items (totals server-computed), fulfil → stock `OUT` + transaction
 - Transactions (`SALE/REFUND/EXPENSE/ROYALTY_PAYOUT`), budgets planned vs actual
 - Contracts + royalty rules + statement generation from net sales; approve/pay flow
 - Frontend: order create/fulfil screens, finance ledger, royalty statement view
+- Also closed review gaps: book↔contributor link endpoints (royalties need them)
 
 **Acceptance:** order total ignores client math; fulfil decrements stock + writes
 `SALE` txn in one tx; `payable = net × rate` verified by seeded fixture;
