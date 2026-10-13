@@ -24,21 +24,24 @@ services:
       retries: 5
       start_period: 10s
 
-  # --- Optional: uncomment for local DB admin UI ---
-  # pgadmin:
-  #   image: dpage/pgadmin4:latest
-  #   container_name: smartos-pgadmin
-  #   restart: unless-stopped
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@smartos.local
-  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-  #   ports:
-  #     - "5050:80"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+  # --- Optional local DB admin UI (GUI): uncommented and ready. Start with
+  # `docker compose up pgadmin -d`, then open http://localhost:5050 and log in
+  # with PGADMIN_DEFAULT_EMAIL below and your PGADMIN_PASSWORD from .env.
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartos-pgadmin
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartos.local
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?Set PGADMIN_PASSWORD in .env}
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:
