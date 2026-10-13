@@ -1,0 +1,45 @@
+# Local Postgres for SmartOs
+# Backend and frontend run locally (see README.md quickstart).
+# Only infra in compose is `db`. Add services later if needed.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: smartos-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-smartos}
+      POSTGRES_USER: ${POSTGRES_USER:-smartos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartos} -d ${POSTGRES_DB:-smartos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # --- Optional: uncomment for local DB admin UI ---
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   container_name: smartos-pgadmin
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: admin@smartos.local
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+  #   ports:
+  #     - "5050:80"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+volumes:
+  pgdata:
+    name: smartos-pgdata

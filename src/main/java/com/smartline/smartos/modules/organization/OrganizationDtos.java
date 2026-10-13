@@ -1,0 +1,116 @@
+package com.smartline.smartos.modules.organization;
+
+import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+public final class OrganizationDtos {
+
+  private OrganizationDtos() {
+  }
+
+  public static class CreateOrganizationRequest {
+    @NotBlank private String name;
+    @NotBlank private String slug;
+
+    public CreateOrganizationRequest() {
+    }
+
+    public CreateOrganizationRequest(String name, String slug) {
+      this.name = name;
+      this.slug = slug;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
+    public String getSlug() {
+      return slug;
+    }
+
+    public void setSlug(String slug) {
+      this.slug = slug;
+    }
+  }
+
+  public static class OrganizationResponse {
+    private UUID id;
+    private String name;
+    private String slug;
+    private String plan;
+    private Map<String, Object> settings;
+    private Instant createdAt;
+
+    public OrganizationResponse() {
+    }
+
+    public OrganizationResponse(UUID id, String name, String slug, String plan,
+        Map<String, Object> settings, Instant createdAt) {
+      this.id = id;
+      this.name = name;
+      this.slug = slug;
+      this.plan = plan;
+      this.settings = settings;
+      this.createdAt = createdAt;
+    }
+
+    public UUID getId() {
+      return id;
+    }
+
+    public void setId(UUID id) {
+      this.id = id;
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
+    public String getSlug() {
+      return slug;
+    }
+
+    public void setSlug(String slug) {
+      this.slug = slug;
+    }
+
+    public String getPlan() {
+      return plan;
+    }
+
+    public void setPlan(String plan) {
+      this.plan = plan;
+    }
+
+    public Map<String, Object> getSettings() {
+      return settings;
+    }
+
+    public void setSettings(Map<String, Object> settings) {
+      this.settings = settings;
+    }
+
+    public Instant getCreatedAt() {
+      return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+      this.createdAt = createdAt;
+    }
+
+    public static OrganizationResponse from(Organization o) {
+      return new OrganizationResponse(o.getId(), o.getName(), o.getSlug(),
+          o.getPlan() != null ? o.getPlan().name() : null, o.getSettings(), o.getCreatedAt());
+    }
+  }
+}
