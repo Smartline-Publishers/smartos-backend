@@ -13,7 +13,9 @@ import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.modules.user.UserDtos.CreateUserRequest;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +25,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +55,7 @@ class UserServiceTest {
   @AfterEach
   void tearDown() {
     TenantContext.clear();
+    SecurityContextHolder.clearContext();
   }
 
   @Test
@@ -89,5 +94,30 @@ class UserServiceTest {
     AppUser saved = service.create(req);
 
     assertEquals("new@acme.test", saved.getEmail());
+  }
+
+  @Test
+  void orgAdminCannotGrantPlatformAdmin() {
+    authenticate(Role.ORG_ADMIN);
+    when(organizations.findById(orgId)).thenReturn(Optional.of(org));
+    when(users.countByOrganizationId(eq(orgId))).thenReturn(1L);
+
+    CreateUserRequest req = new CreateUserRequest();
+    req.setEmail("root@acme.test");
+    req.setPassword("secret123");
+    req.setFullName("Root User");
+    req.setRole(Role.PLATFORM_ADMIN);
+
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+
+    assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+    verify(users, never()).save(any());
+  }
+
+  private void authenticate(Role role) {
+    UserPrincipal principal =
+        new UserPrincipal(UUID.randomUUID(), orgId, List.of(role.name()));
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
   }
 }

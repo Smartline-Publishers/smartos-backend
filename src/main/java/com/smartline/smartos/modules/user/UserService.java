@@ -7,10 +7,13 @@ import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.modules.user.UserDtos.CreateUserRequest;
 import com.smartline.smartos.modules.user.UserDtos.UpdateUserRequest;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +42,10 @@ public class UserService {
       throw ApiException.planLimit("Organization user quota reached for plan "
           + org.getPlan().name());
     }
+    Role role = req.getRole() != null ? req.getRole() : Role.VIEWER;
+    if (role == Role.PLATFORM_ADMIN && !callerIsPlatformAdmin()) {
+      throw ApiException.forbidden("Only platform admins can grant the platform admin role");
+    }
     String email = req.getEmail().trim().toLowerCase();
     if (users.existsByOrganizationIdAndEmail(orgId, email)) {
       throw ApiException.conflict("User email already exists in organization: " + email);
@@ -48,7 +55,7 @@ public class UserService {
     user.setEmail(email);
     user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
     user.setFullName(req.getFullName().trim());
-    user.setRole(req.getRole() != null ? req.getRole() : Role.VIEWER);
+    user.setRole(role);
     user.setActive(true);
     return users.save(user);
   }
@@ -74,6 +81,9 @@ public class UserService {
       user.setFullName(req.getFullName().trim());
     }
     if (req.getRole() != null) {
+      if (req.getRole() == Role.PLATFORM_ADMIN && !callerIsPlatformAdmin()) {
+        throw ApiException.forbidden("Only platform admins can grant the platform admin role");
+      }
       user.setRole(req.getRole());
     }
     if (req.getActive() != null) {
@@ -87,5 +97,11 @@ public class UserService {
   public void delete(UUID id) {
     AppUser user = get(id);
     users.delete(user);
+  }
+
+  private boolean callerIsPlatformAdmin() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getPrincipal() instanceof UserPrincipal principal
+        && principal.getRoles().contains(Role.PLATFORM_ADMIN.name());
   }
 }
