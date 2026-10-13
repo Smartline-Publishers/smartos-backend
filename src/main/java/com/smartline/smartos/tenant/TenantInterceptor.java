@@ -8,16 +8,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import com.smartline.smartos.security.UserPrincipal;
-import com.smartline.smartos.security.JwtService;
 
 @Component
 public class TenantInterceptor implements HandlerInterceptor {
-
-  private final JwtService jwtService;
-
-  public TenantInterceptor(JwtService jwtService) {
-    this.jwtService = jwtService;
-  }
+  // NOTE: JWT parsing/validation intentionally lives in JwtAuthenticationFilter,
+  // which runs before this interceptor and stores the principal + tenant. This
+  // interceptor only re-establishes TenantContext for /api/** requests.
 
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {

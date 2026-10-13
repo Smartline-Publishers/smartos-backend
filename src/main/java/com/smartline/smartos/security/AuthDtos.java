@@ -2,6 +2,7 @@ package com.smartline.smartos.security;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public final class AuthDtos {
@@ -110,7 +111,7 @@ public final class AuthDtos {
     @NotBlank private String organizationName;
     @NotBlank private String slug;
     @Email @NotBlank private String adminEmail;
-    @NotBlank private String adminPassword;
+    @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") private String adminPassword;
     @NotBlank private String adminFullName;
 
     public RegisterOrgRequest() {

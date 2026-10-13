@@ -15,7 +15,8 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,10 +28,26 @@ class AuthFlowTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
+  @Autowired private AuthService authService;
 
-  @MockBean private AuthService authService;
-  // Satisfies JwtAuthenticationFilter + TenantInterceptor @Components in the slice.
-  @MockBean private JwtService jwtService;
+  /**
+   * Explicit Mockito beans instead of the deprecated {@code @MockBean}: the
+   * project's Spring Boot 3.4 does not ship its replacement
+   * ({@code @MockitoBean} arrives in Boot 3.5), so mocks are declared as beans.
+   * JwtService satisfies the JwtAuthenticationFilter @Component in the slice.
+   */
+  @TestConfiguration
+  static class MockConfig {
+    @Bean
+    AuthService authService() {
+      return Mockito.mock(AuthService.class);
+    }
+
+    @Bean
+    JwtService jwtService() {
+      return Mockito.mock(JwtService.class);
+    }
+  }
 
   @Test
   void loginReturnsToken() throws Exception {

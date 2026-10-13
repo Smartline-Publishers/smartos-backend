@@ -68,8 +68,16 @@ public class AuthService {
       user = users.findByOrganizationIdAndEmail(req.getOrganizationId(), email)
           .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials"));
     } else {
-      user = users.findByEmailIgnoreCase(email).stream()
+      // Same email can exist in multiple organizations (unique per org, not
+      // globally): never pick an organization arbitrarily.
+      java.util.      List<AppUser> matches = users.findByEmailIgnoreCase(email).stream()
           .filter(AppUser::isActive)
+          .toList();
+      if (matches.size() > 1) {
+        throw new ApiException(HttpStatus.UNAUTHORIZED, "AMBIGUOUS_TENANT",
+            "Email belongs to multiple organizations; specify organizationId");
+      }
+      user = matches.stream()
           .findFirst()
           .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials"));
     }
