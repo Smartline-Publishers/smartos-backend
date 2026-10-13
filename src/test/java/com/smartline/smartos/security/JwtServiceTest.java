@@ -43,6 +43,16 @@ class JwtServiceTest {
   }
 
   @Test
+  void accessTokenIncludesEmailClaim() {
+    JwtService service = new JwtService(BASE64_SECRET, 900000, 604800000);
+
+    String token = service.generateAccessToken(UUID.randomUUID(), UUID.randomUUID(),
+        List.of("ORG_ADMIN"), "Admin@Acme.Test");
+
+    assertEquals("admin@acme.test", service.parse(token).get("email", String.class));
+  }
+
+  @Test
   void refreshTokenHasRefreshType() {
     JwtService service = new JwtService(BASE64_SECRET, 900000, 604800000);
     UUID orgId = UUID.randomUUID();

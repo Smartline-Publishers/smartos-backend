@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -119,7 +120,7 @@ public class AuthService {
     UUID orgId = jwtService.extractOrgId(claims);
     UUID effectiveOrg = orgId != null ? orgId : user.getOrganization().getId();
     List<String> roles = List.of(user.getRole().name());
-    String access = jwtService.generateAccessToken(user.getId(), effectiveOrg, roles);
+    String access = jwtService.generateAccessToken(user.getId(), effectiveOrg, roles, user.getEmail());
     String nextRefresh = jwtService.generateRefreshToken(user.getId(), effectiveOrg);
     RefreshToken replacement = storeRefresh(user, nextRefresh);
     stored.setRevoked(true);
@@ -142,18 +143,26 @@ public class AuthService {
 
   private TokenResponse issueTokens(AppUser user, UUID orgId) {
     List<String> roles = List.of(user.getRole().name());
-    String access = jwtService.generateAccessToken(user.getId(), orgId, roles);
+    String access = jwtService.generateAccessToken(user.getId(), orgId, roles, user.getEmail());
     String refresh = jwtService.generateRefreshToken(user.getId(), orgId);
     storeRefresh(user, refresh);
     return new TokenResponse(access, refresh, "Bearer");
   }
 
   private RefreshToken storeRefresh(AppUser user, String refreshToken) {
+    String hash = TokenHashes.sha256Hex(refreshToken);
     RefreshToken record = new RefreshToken();
     record.setUser(user);
-    record.setTokenHash(TokenHashes.sha256Hex(refreshToken));
+    record.setTokenHash(hash);
     record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
-    return refreshTokens.save(record);
+    try {
+      return refreshTokens.save(record);
+    } catch (DataIntegrityViolationException e) {
+      // Concurrent duplicate submission (e.g. parallel token refreshes racing
+      // on the same token): the row already exists, so reuse it instead of
+      // failing the request with a 500.
+      return refreshTokens.findByTokenHash(hash).orElseThrow(() -> e);
+    }
   }
 
   private void revokeFamily(UUID userId) {

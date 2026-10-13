@@ -58,14 +58,18 @@ public class JwtService {
   }
 
   public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles) {
-    return buildToken(userId, orgId, roles, accessExpiryMs, "access");
+    return buildToken(userId, orgId, roles, null, accessExpiryMs, "access");
+  }
+
+  public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles, String email) {
+    return buildToken(userId, orgId, roles, email, accessExpiryMs, "access");
   }
 
   public String generateRefreshToken(UUID userId, UUID orgId) {
-    return buildToken(userId, orgId, List.of(), refreshExpiryMs, "refresh");
+    return buildToken(userId, orgId, List.of(), null, refreshExpiryMs, "refresh");
   }
 
-  private String buildToken(UUID userId, UUID orgId, Collection<String> roles, long ttlMs, String type) {
+  private String buildToken(UUID userId, UUID orgId, Collection<String> roles, String email, long ttlMs, String type) {
     long now = System.currentTimeMillis();
     var builder = Jwts.builder()
         .subject(userId.toString())
@@ -74,6 +78,9 @@ public class JwtService {
         .claim("type", type);
     if (orgId != null) {
       builder.claim("orgId", orgId.toString());
+    }
+    if (email != null && !email.isBlank()) {
+      builder.claim("email", email.trim().toLowerCase());
     }
     if (roles != null && !roles.isEmpty()) {
       builder.claim("roles", roles);

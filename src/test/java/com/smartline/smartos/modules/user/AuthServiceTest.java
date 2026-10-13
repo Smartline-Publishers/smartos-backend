@@ -50,7 +50,8 @@ class AuthServiceTest {
     AppUser user = user(org, "admin@acme.test");
     when(users.findByEmailIgnoreCase("admin@acme.test")).thenReturn(List.of(user));
     when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
-    when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN"))))
+    when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN")),
+        eq("admin@acme.test")))
         .thenReturn("access");
     when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()))).thenReturn("refresh");
 
@@ -87,6 +88,29 @@ class AuthServiceTest {
   }
 
   @Test
+  void loginToleratesDuplicateRefreshStore() {
+    Organization org = org();
+    AppUser user = user(org, "admin@acme.test");
+    when(users.findByEmailIgnoreCase("admin@acme.test")).thenReturn(List.of(user));
+    when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
+    when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN")),
+        eq("admin@acme.test")))
+        .thenReturn("access");
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()))).thenReturn("refresh");
+    RefreshToken existing = new RefreshToken();
+    existing.setId(UUID.randomUUID());
+    when(refreshTokens.save(any(RefreshToken.class)))
+        .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(refreshTokens.findByTokenHash(any(String.class))).thenReturn(Optional.of(existing));
+
+    TokenResponse tokens = service.login(new LoginRequest("admin@acme.test", "secret123", null));
+
+    assertEquals("access", tokens.getAccessToken());
+    assertEquals("refresh", tokens.getRefreshToken());
+  }
+
+  @Test
   void refreshRotatesAndRevokesOldToken() {
     Organization org = org();
     AppUser user = user(org, "admin@acme.test");
@@ -98,7 +122,7 @@ class AuthServiceTest {
         .thenReturn(Optional.of(stored));
     when(jwtService.extractOrgId(claims)).thenReturn(org.getId());
     when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()),
-        eq(List.of("ORG_ADMIN")))).thenReturn("access-2");
+        eq(List.of("ORG_ADMIN")), eq("admin@acme.test"))).thenReturn("access-2");
     when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId())))
         .thenReturn("refresh-2");
     when(refreshTokens.save(any(RefreshToken.class))).thenAnswer(inv -> {

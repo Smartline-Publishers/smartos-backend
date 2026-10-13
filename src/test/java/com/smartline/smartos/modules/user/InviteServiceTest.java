@@ -123,6 +123,37 @@ class InviteServiceTest {
   }
 
   @Test
+  void acceptToleratesDuplicateRefreshStore() {
+    Invite invite = pendingInvite();
+    when(invites.findByTokenHash(eq(TokenHashes.sha256Hex("plain-token"))))
+        .thenReturn(Optional.of(invite));
+    when(users.existsByOrganizationIdAndEmail(eq(orgId), eq("editor@acme.test")))
+        .thenReturn(false);
+    when(users.countByOrganizationId(eq(orgId))).thenReturn(1L);
+    when(passwordEncoder.encode("secret123")).thenReturn("hash");
+    when(users.save(any(AppUser.class))).thenAnswer(inv -> {
+      AppUser u = inv.getArgument(0);
+      u.setId(UUID.randomUUID());
+      return u;
+    });
+    when(jwtService.generateAccessToken(any(), eq(orgId), any())).thenReturn("access");
+    when(jwtService.generateRefreshToken(any(), eq(orgId))).thenReturn("refresh");
+    RefreshToken existing = new RefreshToken();
+    existing.setId(UUID.randomUUID());
+    when(refreshTokens.save(any(RefreshToken.class)))
+        .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"));
+    when(refreshTokens.findByTokenHash(any(String.class))).thenReturn(Optional.of(existing));
+
+    AcceptInviteRequest req = new AcceptInviteRequest();
+    req.setToken("plain-token");
+    req.setFullName("Ed Editor");
+    req.setPassword("secret123");
+    TokenResponse tokens = service.accept(req);
+
+    assertEquals("access", tokens.getAccessToken());
+  }
+
+  @Test
   void acceptUnknownTokenReturns404() {
     when(invites.findByTokenHash(eq(TokenHashes.sha256Hex("nope"))))
         .thenReturn(Optional.empty());

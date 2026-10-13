@@ -20,6 +20,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -123,11 +124,17 @@ public class InviteService {
   }
 
   private void storeRefresh(AppUser user, String refreshToken) {
+    String hash = TokenHashes.sha256Hex(refreshToken);
     RefreshToken record = new RefreshToken();
     record.setUser(user);
-    record.setTokenHash(TokenHashes.sha256Hex(refreshToken));
+    record.setTokenHash(hash);
     record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
-    refreshTokens.save(record);
+    try {
+      refreshTokens.save(record);
+    } catch (DataIntegrityViolationException e) {
+      // Concurrent duplicate submission: the row already exists.
+      refreshTokens.findByTokenHash(hash).orElseThrow(() -> e);
+    }
   }
 
   private String generateToken() {
