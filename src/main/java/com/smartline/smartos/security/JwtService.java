@@ -3,7 +3,9 @@ package com.smartline.smartos.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.io.DecodingException;
 import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -23,15 +25,36 @@ public class JwtService {
       @Value("${app.jwt.secret:change-me-change-me-change-me-32bytes-min}") String secret,
       @Value("${app.jwt.access-expiry-ms:900000}") long accessExpiryMs,
       @Value("${app.jwt.refresh-expiry-ms:604800000}") long refreshExpiryMs) {
-    byte[] keyBytes;
-    try {
-      keyBytes = Decoders.BASE64.decode(secret);
-    } catch (IllegalArgumentException e) {
-      keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    byte[] keyBytes = decodeSecret(secret);
+    if (keyBytes.length < 32) {
+      throw new IllegalStateException(
+          "app.jwt.secret (JWT_SECRET) must decode to at least 32 bytes (256 bits) for HMAC signing; "
+              + "generate one with e.g. `openssl rand -base64 48` and set it via the JWT_SECRET environment variable");
     }
     this.key = Keys.hmacShaKeyFor(keyBytes);
     this.accessExpiryMs = accessExpiryMs;
     this.refreshExpiryMs = refreshExpiryMs;
+  }
+
+  /**
+   * Accepts standard Base64 (e.g. {@code openssl rand -base64}), URL-safe Base64
+   * (alphabet with {@code -} and {@code _}), or a raw passphrase.
+   * JJWT wraps strict-Base64 failures in {@link DecodingException}, which does
+   * <em>not</em> extend {@link IllegalArgumentException} — catching only the
+   * latter lets a non-standard secret escape and kill bean initialization.
+   */
+  private static byte[] decodeSecret(String secret) {
+    try {
+      return Decoders.BASE64.decode(secret);
+    } catch (DecodingException | IllegalArgumentException e) {
+      // Not standard Base64: try the URL-safe alphabet next.
+    }
+    try {
+      return Decoders.BASE64URL.decode(secret);
+    } catch (DecodingException | IllegalArgumentException e) {
+      // Not encoded at all: use raw bytes (strength is checked by the caller).
+    }
+    return secret.getBytes(StandardCharsets.UTF_8);
   }
 
   public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles) {

@@ -15,3 +15,6 @@ Thumbs.db
 .vscode/
 *.iml
 *.log
+
+# Local duplicate/scratch copy (not part of the repo)
+bin/

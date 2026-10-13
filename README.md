@@ -66,7 +66,7 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 | `POSTGRES_DB/USER/PASSWORD` | compose `db` container | `smartos/smartos/<required>` |
 | `DB_URL` | `application.yml` datasource (keep in sync with the parts above) | `jdbc:postgresql://localhost:5432/smartos` |
 | `DB_USER` / `DB_PASSWORD` | datasource credentials | `postgres/postgres` (override in `.env`) |
-| `JWT_SECRET` | token signing (≥256-bit) | dev-only placeholder — must override |
+| `JWT_SECRET` | token signing — standard Base64, URL-safe Base64, or a raw passphrase of ≥32 bytes; generate with `openssl rand -base64 48` | dev-only placeholder — must override (export `JWT_SECRET` in your shell; never commit it) |
 | `CORS_ORIGINS` | allowed web origins | `http://localhost:3000` |
 
 Never commit `.env`. `ddl-auto` is `validate`: schema changes go through `src/main/resources/db/migration/V<seq>__<name>.sql` (forward-only).
