@@ -78,7 +78,7 @@ class InventoryServiceTest {
   @Test
   void warehouseNameUniquePerOrg() {
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(warehouses.existsByOrganizationIdAndName(eq(orgId), eq("Accra"))).thenReturn(true);
+    when(warehouses.existsByOrganization_IdAndName(eq(orgId), eq("Accra"))).thenReturn(true);
 
     CreateWarehouseRequest req = new CreateWarehouseRequest();
     req.setName("Accra");
@@ -94,13 +94,13 @@ class InventoryServiceTest {
     target.setId(UUID.randomUUID());
     target.setOrganization(org);
     target.setName("Kumasi");
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(warehouses.findByIdAndOrganizationId(eq(warehouse.getId()), eq(orgId)))
+    when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
-    when(warehouses.findByIdAndOrganizationId(eq(target.getId()), eq(orgId)))
+    when(warehouses.findByIdAndOrganization_Id(eq(target.getId()), eq(orgId)))
         .thenReturn(Optional.of(target));
-    when(movements.findByOrganizationId(eq(orgId)))
+    when(movements.findByOrganization_Id(eq(orgId)))
         .thenReturn(List.of(movement(book, warehouse, 100)));
     when(movements.save(any(StockMovement.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -131,12 +131,12 @@ class InventoryServiceTest {
     target.setId(UUID.randomUUID());
     target.setOrganization(org);
     target.setName("Kumasi");
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(warehouses.findByIdAndOrganizationId(eq(warehouse.getId()), eq(orgId)))
+    when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
     // No to-warehouse stub: the OUT leg fails the stock check first.
-    when(movements.findByOrganizationId(eq(orgId))).thenReturn(List.of());
+    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
 
     TransferRequest req = new TransferRequest();
     req.setBookId(book.getId());
@@ -152,11 +152,11 @@ class InventoryServiceTest {
 
   @Test
   void outMovementBelowZeroBlocked() {
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(warehouses.findByIdAndOrganizationId(eq(warehouse.getId()), eq(orgId)))
+    when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
-    when(movements.findByOrganizationId(eq(orgId))).thenReturn(List.of());
+    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
 
     CreateMovementRequest req = new CreateMovementRequest();
     req.setBookId(book.getId());
@@ -171,11 +171,11 @@ class InventoryServiceTest {
   @Test
   void adjustmentByAdminAllowedBelowZero() {
     authenticate(Role.ORG_ADMIN);
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(warehouses.findByIdAndOrganizationId(eq(warehouse.getId()), eq(orgId)))
+    when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
-    when(movements.findByOrganizationId(eq(orgId))).thenReturn(List.of());
+    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
     when(movements.save(any(StockMovement.class))).thenAnswer(inv -> inv.getArgument(0));
 
     CreateMovementRequest req = new CreateMovementRequest();
@@ -193,7 +193,7 @@ class InventoryServiceTest {
     other.setId(UUID.randomUUID());
     other.setOrganization(org);
     other.setTitle("Akan Tales");
-    when(movements.findByOrganizationId(eq(orgId))).thenReturn(List.of(
+    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of(
         movement(book, warehouse, 10),
         movement(book, warehouse, -3),
         movement(other, warehouse, 5)));

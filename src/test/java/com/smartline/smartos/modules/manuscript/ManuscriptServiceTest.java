@@ -79,7 +79,7 @@ class ManuscriptServiceTest {
   @Test
   void illegalTransitionThrows400AndRecordsNothing() {
     Manuscript manuscript = manuscriptAt(ManuscriptStage.SUBMITTED);
-    when(manuscripts.findByIdAndOrganizationId(eq(manuscript.getId()), eq(orgId)))
+    when(manuscripts.findByIdAndOrganization_Id(eq(manuscript.getId()), eq(orgId)))
         .thenReturn(Optional.of(manuscript));
 
     ApiException ex = assertThrows(ApiException.class,
@@ -92,7 +92,7 @@ class ManuscriptServiceTest {
   @Test
   void sameStageTransitionThrows400() {
     Manuscript manuscript = manuscriptAt(ManuscriptStage.REVIEW);
-    when(manuscripts.findByIdAndOrganizationId(eq(manuscript.getId()), eq(orgId)))
+    when(manuscripts.findByIdAndOrganization_Id(eq(manuscript.getId()), eq(orgId)))
         .thenReturn(Optional.of(manuscript));
 
     assertThrows(ApiException.class,
@@ -102,7 +102,7 @@ class ManuscriptServiceTest {
   @Test
   void legalTransitionMovesStageAndRecordsEvent() {
     Manuscript manuscript = manuscriptAt(ManuscriptStage.SUBMITTED);
-    when(manuscripts.findByIdAndOrganizationId(eq(manuscript.getId()), eq(orgId)))
+    when(manuscripts.findByIdAndOrganization_Id(eq(manuscript.getId()), eq(orgId)))
         .thenReturn(Optional.of(manuscript));
     when(manuscripts.save(any(Manuscript.class))).thenAnswer(inv -> inv.getArgument(0));
     when(events.save(any(ManuscriptEvent.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -120,7 +120,7 @@ class ManuscriptServiceTest {
   @Test
   void approvedIsTerminal() {
     Manuscript manuscript = manuscriptAt(ManuscriptStage.APPROVED);
-    when(manuscripts.findByIdAndOrganizationId(eq(manuscript.getId()), eq(orgId)))
+    when(manuscripts.findByIdAndOrganization_Id(eq(manuscript.getId()), eq(orgId)))
         .thenReturn(Optional.of(manuscript));
 
     ApiException ex = assertThrows(ApiException.class,
@@ -133,7 +133,7 @@ class ManuscriptServiceTest {
   void createWithForeignBookReturns404() {
     UUID foreignBook = UUID.randomUUID();
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(books.findByIdAndOrganizationId(eq(foreignBook), eq(orgId))).thenReturn(Optional.empty());
+    when(books.findByIdAndOrganization_Id(eq(foreignBook), eq(orgId))).thenReturn(Optional.empty());
 
     CreateManuscriptRequest req = new CreateManuscriptRequest();
     req.setTitle("Linked");
@@ -149,7 +149,7 @@ class ManuscriptServiceTest {
     Manuscript manuscript = manuscriptAt(ManuscriptStage.EDITING);
     manuscript.setTitle("Old title");
     manuscript.setVersion(3);
-    when(manuscripts.findByIdAndOrganizationId(eq(manuscript.getId()), eq(orgId)))
+    when(manuscripts.findByIdAndOrganization_Id(eq(manuscript.getId()), eq(orgId)))
         .thenReturn(Optional.of(manuscript));
     when(manuscripts.save(any(Manuscript.class))).thenAnswer(inv -> inv.getArgument(0));
 

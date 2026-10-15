@@ -53,6 +53,8 @@ public final class AuthDtos {
     private String accessToken;
     private String refreshToken;
     private String tokenType = "Bearer";
+    private boolean twoFactorRequired;
+    private String challengeToken;
 
     public TokenResponse() {
     }
@@ -61,6 +63,13 @@ public final class AuthDtos {
       this.accessToken = accessToken;
       this.refreshToken = refreshToken;
       this.tokenType = tokenType;
+    }
+
+    public static TokenResponse challenge(String challengeToken) {
+      TokenResponse r = new TokenResponse();
+      r.setTwoFactorRequired(true);
+      r.setChallengeToken(challengeToken);
+      return r;
     }
 
     public String getAccessToken() {
@@ -85,6 +94,46 @@ public final class AuthDtos {
 
     public void setTokenType(String tokenType) {
       this.tokenType = tokenType;
+    }
+
+    public boolean isTwoFactorRequired() {
+      return twoFactorRequired;
+    }
+
+    public void setTwoFactorRequired(boolean twoFactorRequired) {
+      this.twoFactorRequired = twoFactorRequired;
+    }
+
+    public String getChallengeToken() {
+      return challengeToken;
+    }
+
+    public void setChallengeToken(String challengeToken) {
+      this.challengeToken = challengeToken;
+    }
+  }
+
+  public static class TwoFactorVerifyRequest {
+    @NotBlank private String challengeToken;
+    @NotBlank private String code;
+
+    public TwoFactorVerifyRequest() {
+    }
+
+    public String getChallengeToken() {
+      return challengeToken;
+    }
+
+    public void setChallengeToken(String challengeToken) {
+      this.challengeToken = challengeToken;
+    }
+
+    public String getCode() {
+      return code;
+    }
+
+    public void setCode(String code) {
+      this.code = code;
     }
   }
 

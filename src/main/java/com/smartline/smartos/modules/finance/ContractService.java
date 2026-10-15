@@ -42,11 +42,11 @@ public class ContractService {
     UUID orgId = TenantContext.require();
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
-    Contributor contributor = contributors.findByIdAndOrganizationId(req.getContributorId(), orgId)
+    Contributor contributor = contributors.findByIdAndOrganization_Id(req.getContributorId(), orgId)
         .orElseThrow(() -> ApiException.notFound("Contributor", req.getContributorId()));
     Book book = null;
     if (req.getBookId() != null) {
-      book = books.findByIdAndOrganizationId(req.getBookId(), orgId)
+      book = books.findByIdAndOrganization_Id(req.getBookId(), orgId)
           .orElseThrow(() -> ApiException.notFound("Book", req.getBookId()));
     }
     if (req.getEndDate() != null && req.getEndDate().isBefore(req.getStartDate())) {
@@ -65,12 +65,12 @@ public class ContractService {
 
   @Transactional(readOnly = true)
   public Page<Contract> list(Pageable pageable) {
-    return contracts.findByOrganizationId(TenantContext.require(), pageable);
+    return contracts.findByOrganization_Id(TenantContext.require(), pageable);
   }
 
   @Transactional(readOnly = true)
   public Contract get(UUID id) {
-    return contracts.findByIdAndOrganizationId(id, TenantContext.require())
+    return contracts.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Contract", id));
   }
 

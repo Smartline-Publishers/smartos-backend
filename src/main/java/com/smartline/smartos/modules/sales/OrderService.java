@@ -54,7 +54,7 @@ public class OrderService {
     UUID orgId = TenantContext.require();
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
-    Customer customer = customers.findByIdAndOrganizationId(req.getCustomerId(), orgId)
+    Customer customer = customers.findByIdAndOrganization_Id(req.getCustomerId(), orgId)
         .orElseThrow(() -> ApiException.notFound("Customer", req.getCustomerId()));
     Order order = new Order();
     order.setOrganization(org);
@@ -64,7 +64,7 @@ public class OrderService {
     Order saved = orders.save(order);
     BigDecimal total = BigDecimal.ZERO;
     for (OrderItemRequest itemReq : req.getItems()) {
-      Book book = books.findByIdAndOrganizationId(itemReq.getBookId(), orgId)
+      Book book = books.findByIdAndOrganization_Id(itemReq.getBookId(), orgId)
           .orElseThrow(() -> ApiException.notFound("Book", itemReq.getBookId()));
       OrderItem item = new OrderItem();
       item.setOrder(saved);
@@ -82,17 +82,17 @@ public class OrderService {
   public Page<Order> list(OrderStatus status, UUID customerId, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (status != null) {
-      return orders.findByOrganizationIdAndStatus(orgId, status, pageable);
+      return orders.findByOrganization_IdAndStatus(orgId, status, pageable);
     }
     if (customerId != null) {
-      return orders.findByOrganizationIdAndCustomerId(orgId, customerId, pageable);
+      return orders.findByOrganization_IdAndCustomerId(orgId, customerId, pageable);
     }
-    return orders.findByOrganizationId(orgId, pageable);
+    return orders.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Order get(UUID id) {
-    return orders.findByIdAndOrganizationId(id, TenantContext.require())
+    return orders.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Order", id));
   }
 

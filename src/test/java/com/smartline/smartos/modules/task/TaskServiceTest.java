@@ -77,7 +77,7 @@ class TaskServiceTest {
   void createWithForeignBookReturns404() {
     UUID foreignBook = UUID.randomUUID();
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(books.findByIdAndOrganizationId(eq(foreignBook), eq(orgId))).thenReturn(Optional.empty());
+    when(books.findByIdAndOrganization_Id(eq(foreignBook), eq(orgId))).thenReturn(Optional.empty());
 
     CreateTaskRequest req = new CreateTaskRequest();
     req.setTitle("Linked task");
@@ -91,11 +91,11 @@ class TaskServiceTest {
   @Test
   void listIsScopedToTenant() {
     var pageable = PageRequest.of(0, 10);
-    when(tasks.findByOrganizationId(eq(orgId), eq(pageable))).thenReturn(Page.empty(pageable));
+    when(tasks.findByOrganization_Id(eq(orgId), eq(pageable))).thenReturn(Page.empty(pageable));
 
     service.list(null, null, null, pageable);
 
-    verify(tasks).findByOrganizationId(eq(orgId), eq(pageable));
+    verify(tasks).findByOrganization_Id(eq(orgId), eq(pageable));
   }
 
   @Test
@@ -105,7 +105,7 @@ class TaskServiceTest {
     task.setOrganization(org);
     task.setTitle("Old");
     task.setStatus(TaskStatus.TODO);
-    when(tasks.findByIdAndOrganizationId(eq(task.getId()), eq(orgId)))
+    when(tasks.findByIdAndOrganization_Id(eq(task.getId()), eq(orgId)))
         .thenReturn(Optional.of(task));
     when(tasks.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -118,7 +118,7 @@ class TaskServiceTest {
   @Test
   void getForeignTaskReturns404() {
     UUID other = UUID.randomUUID();
-    when(tasks.findByIdAndOrganizationId(eq(other), eq(orgId))).thenReturn(Optional.empty());
+    when(tasks.findByIdAndOrganization_Id(eq(other), eq(orgId))).thenReturn(Optional.empty());
 
     ApiException ex = assertThrows(ApiException.class, () -> service.get(other));
 

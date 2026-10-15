@@ -52,7 +52,7 @@ class BookServiceTest {
 
   @Test
   void duplicateIsbnThrows409() {
-    when(books.existsByOrganizationIdAndIsbn(eq(orgId), eq("978-0-00"))).thenReturn(true);
+    when(books.existsByOrganization_IdAndIsbn(eq(orgId), eq("978-0-00"))).thenReturn(true);
     CreateBookRequest req = new CreateBookRequest("Title", null, "978-0-00", null, null, "en", 100);
     ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
     assertEquals(HttpStatus.CONFLICT, ex.getStatus());
@@ -65,7 +65,7 @@ class BookServiceTest {
     org.setName("Acme");
     org.setSlug("acme");
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    // No existsByOrganizationIdAndIsbn stub: req.isbn is null so create() skips the check.
+    // No existsByOrganization_IdAndIsbn stub: req.isbn is null so create() skips the check.
     when(books.save(any(Book.class))).thenAnswer(inv -> inv.getArgument(0));
 
     CreateBookRequest req = new CreateBookRequest("Tenant Book", null, null, null, null, "en", 10);
@@ -79,9 +79,9 @@ class BookServiceTest {
   void deleteBlockedWhenStockHistoryExists() {
     Book book = new Book();
     book.setId(UUID.randomUUID());
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(movements.existsByOrganizationIdAndBookId(eq(orgId), eq(book.getId())))
+    when(movements.existsByOrganization_IdAndBookId(eq(orgId), eq(book.getId())))
         .thenReturn(true);
 
     ApiException ex = assertThrows(ApiException.class, () -> service.delete(book.getId()));
@@ -94,9 +94,9 @@ class BookServiceTest {
   void deleteWithoutHistoryRemovesBook() {
     Book book = new Book();
     book.setId(UUID.randomUUID());
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(movements.existsByOrganizationIdAndBookId(eq(orgId), eq(book.getId())))
+    when(movements.existsByOrganization_IdAndBookId(eq(orgId), eq(book.getId())))
         .thenReturn(false);
 
     service.delete(book.getId());
@@ -108,9 +108,9 @@ class BookServiceTest {
   void linkContributorCreatesLink() {
     Book book = book();
     Contributor contributor = contributor();
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(contributors.findByIdAndOrganizationId(eq(contributor.getId()), eq(orgId)))
+    when(contributors.findByIdAndOrganization_Id(eq(contributor.getId()), eq(orgId)))
         .thenReturn(Optional.of(contributor));
     when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributor.getId())))
         .thenReturn(false);
@@ -129,9 +129,9 @@ class BookServiceTest {
   void duplicateLinkThrows409() {
     Book book = book();
     Contributor contributor = contributor();
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
-    when(contributors.findByIdAndOrganizationId(eq(contributor.getId()), eq(orgId)))
+    when(contributors.findByIdAndOrganization_Id(eq(contributor.getId()), eq(orgId)))
         .thenReturn(Optional.of(contributor));
     when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributor.getId())))
         .thenReturn(true);
@@ -149,7 +149,7 @@ class BookServiceTest {
   void unlinkMissingLinkThrows404() {
     Book book = book();
     UUID contributorId = UUID.randomUUID();
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
     when(links.existsByBookIdAndContributorId(eq(book.getId()), eq(contributorId)))
         .thenReturn(false);

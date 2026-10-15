@@ -47,9 +47,9 @@ class CustomerServiceTest {
   void deleteCustomerWithOrdersThrows409() {
     Customer customer = new Customer();
     customer.setId(UUID.randomUUID());
-    when(customers.findByIdAndOrganizationId(eq(customer.getId()), eq(orgId)))
+    when(customers.findByIdAndOrganization_Id(eq(customer.getId()), eq(orgId)))
         .thenReturn(Optional.of(customer));
-    when(orders.existsByOrganizationIdAndCustomerId(eq(orgId), eq(customer.getId())))
+    when(orders.existsByOrganization_IdAndCustomerId(eq(orgId), eq(customer.getId())))
         .thenReturn(true);
 
     ApiException ex = assertThrows(ApiException.class, () -> service.delete(customer.getId()));
@@ -62,9 +62,9 @@ class CustomerServiceTest {
   void deleteCustomerWithoutOrdersRemoves() {
     Customer customer = new Customer();
     customer.setId(UUID.randomUUID());
-    when(customers.findByIdAndOrganizationId(eq(customer.getId()), eq(orgId)))
+    when(customers.findByIdAndOrganization_Id(eq(customer.getId()), eq(orgId)))
         .thenReturn(Optional.of(customer));
-    when(orders.existsByOrganizationIdAndCustomerId(eq(orgId), eq(customer.getId())))
+    when(orders.existsByOrganization_IdAndCustomerId(eq(orgId), eq(customer.getId())))
         .thenReturn(false);
 
     service.delete(customer.getId());

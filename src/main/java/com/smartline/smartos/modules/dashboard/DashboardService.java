@@ -69,11 +69,11 @@ public class DashboardService {
 
   public DashboardSummary summary() {
     UUID orgId = TenantContext.require();
-    List<Book> allBooks = books.findByOrganizationId(orgId, Pageable.unpaged()).getContent();
+    List<Book> allBooks = books.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
     long published = allBooks.stream().filter(b -> b.getStatus() == BookStatus.PUBLISHED).count();
-    int totalContributors = contributors.findByOrganizationId(orgId).size();
+    int totalContributors = contributors.findByOrganization_Id(orgId).size();
     List<RoyaltyStatement> allStatements =
-        statements.findByOrganizationId(orgId, Pageable.unpaged()).getContent();
+        statements.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
     BigDecimal pending = BigDecimal.ZERO;
     for (RoyaltyStatement s : allStatements) {
       if (s.getStatus() == RoyaltyStatement.StatementStatus.DRAFT
@@ -82,7 +82,7 @@ public class DashboardService {
       }
     }
     List<Manuscript> allManuscripts =
-        manuscripts.findByOrganizationId(orgId, Pageable.unpaged()).getContent();
+        manuscripts.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
 
     DashboardSummary summary = new DashboardSummary();
     summary.setTotalBooks(allBooks.size());
@@ -129,7 +129,7 @@ public class DashboardService {
   private List<AttentionItem> attention(UUID orgId, List<Manuscript> allManuscripts) {
     List<AttentionItem> items = new ArrayList<>();
     LocalDate today = LocalDate.now(ZoneOffset.UTC);
-    tasks.findByOrganizationId(orgId, Pageable.unpaged()).getContent().stream()
+    tasks.findByOrganization_Id(orgId, Pageable.unpaged()).getContent().stream()
         .filter(t -> t.getStatus() != TaskStatus.DONE
             && t.getDueDate() != null && t.getDueDate().isBefore(today))
         .sorted(Comparator.comparing(Task::getDueDate))
@@ -154,7 +154,7 @@ public class DashboardService {
         .forEach(m -> items.add(new AttentionItem("manuscript-" + m.getId(), "approval",
             "Review needed — " + m.getTitle(), "Awaiting editorial decision", "medium", null,
             "/manuscripts")));
-    long drafts = statements.findByOrganizationIdAndStatus(orgId,
+    long drafts = statements.findByOrganization_IdAndStatus(orgId,
             RoyaltyStatement.StatementStatus.DRAFT, Pageable.unpaged()).getTotalElements();
     if (drafts > 0) {
       items.add(new AttentionItem("royalties-draft", "royalty",

@@ -69,10 +69,23 @@ public class JwtService {
     return buildToken(userId, orgId, List.of(), null, refreshExpiryMs, "refresh");
   }
 
+  /**
+   * Short-lived second-factor challenge (5 minutes). Accepted only by the 2FA
+   * verify endpoint — never as an access or refresh token.
+   */
+  public String generateChallengeToken(UUID userId, UUID orgId) {
+    return buildToken(userId, orgId, List.of(), null, 300_000L, "2fa-challenge");
+  }
+
   private String buildToken(UUID userId, UUID orgId, Collection<String> roles, String email, long ttlMs, String type) {
     long now = System.currentTimeMillis();
     var builder = Jwts.builder()
         .subject(userId.toString())
+        // Unique token id: JWT timestamps have one-second resolution, so two
+        // tokens minted in the same second would otherwise be byte-identical.
+        // Identical refresh tokens share a SHA-256 hash and collide on the
+        // refresh_tokens.token_hash unique constraint (intermittent 500s).
+        .id(UUID.randomUUID().toString())
         .issuedAt(new Date(now))
         .expiration(new Date(now + ttlMs))
         .claim("type", type);

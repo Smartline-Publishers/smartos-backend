@@ -7,6 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BudgetRepository extends JpaRepository<Budget, UUID> {
-  Optional<Budget> findByIdAndOrganizationId(UUID id, UUID organizationId);
-  Page<Budget> findByOrganizationId(UUID organizationId, Pageable pageable);
+  Optional<Budget> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+  Page<Budget> findByOrganization_Id(UUID organizationId, Pageable pageable);
 }

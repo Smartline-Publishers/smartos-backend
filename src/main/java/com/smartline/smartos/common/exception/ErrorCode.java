@@ -9,6 +9,7 @@ public enum ErrorCode {
   FORBIDDEN("FORBIDDEN"),
   PLAN_LIMIT("PLAN_LIMIT"),
   BAD_REQUEST("BAD_REQUEST"),
+  NOT_CONFIGURED("NOT_CONFIGURED"),
   INTERNAL_ERROR("INTERNAL_ERROR");
 
   private final String code;

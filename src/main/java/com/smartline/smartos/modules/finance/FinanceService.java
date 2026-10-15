@@ -49,7 +49,7 @@ public class FinanceService {
       if (req.getReferenceId() == null) {
         throw ApiException.badRequest("Refunds must reference a fulfilled order");
       }
-      Order order = orders.findByIdAndOrganizationId(req.getReferenceId(), orgId)
+      Order order = orders.findByIdAndOrganization_Id(req.getReferenceId(), orgId)
           .orElseThrow(() -> ApiException.notFound("Order", req.getReferenceId()));
       if (order.getStatus() != OrderStatus.FULFILLED) {
         throw ApiException.badRequest("Refunds must reference a fulfilled order");
@@ -71,12 +71,12 @@ public class FinanceService {
   public Page<Transaction> list(TransactionType type, String category, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (type != null) {
-      return transactions.findByOrganizationIdAndTypeOrderByCreatedAtDesc(orgId, type, pageable);
+      return transactions.findByOrganization_IdAndTypeOrderByCreatedAtDesc(orgId, type, pageable);
     }
     if (category != null && !category.isBlank()) {
-      return transactions.findByOrganizationIdAndCategoryOrderByCreatedAtDesc(orgId,
+      return transactions.findByOrganization_IdAndCategoryOrderByCreatedAtDesc(orgId,
           category.trim(), pageable);
     }
-    return transactions.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
+    return transactions.findByOrganization_IdOrderByCreatedAtDesc(orgId, pageable);
   }
 }

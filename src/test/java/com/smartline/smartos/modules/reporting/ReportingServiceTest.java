@@ -86,12 +86,12 @@ class ReportingServiceTest {
     LocalDate to = LocalDate.of(2026, 9, 30);
     Instant inPeriod = Instant.parse("2026-08-10T10:00:00Z");
     Order order = fulfilledOrder(inPeriod);
-    when(orders.findByOrganizationIdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
+    when(orders.findByOrganization_IdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
         .thenReturn(List.of(order));
     when(orderItems.findByOrderId(eq(order.getId()))).thenReturn(List.of(
         line(order, bookA, 2, new BigDecimal("100.00")),
         line(order, bookB, 1, new BigDecimal("50.00"))));
-    when(transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(eq(orgId),
+    when(transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(eq(orgId),
         eq(TransactionType.REFUND), any(Instant.class), any(Instant.class)))
         .thenReturn(List.of(refund(order.getId(), new BigDecimal("30.00"), inPeriod)));
 
@@ -110,11 +110,11 @@ class ReportingServiceTest {
     LocalDate from = LocalDate.of(2026, 7, 1);
     LocalDate to = LocalDate.of(2026, 9, 30);
     Order order = fulfilledOrder(Instant.parse("2026-08-10T10:00:00Z"));
-    when(orders.findByOrganizationIdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
+    when(orders.findByOrganization_IdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
         .thenReturn(List.of(order));
     when(orderItems.findByOrderId(eq(order.getId())))
         .thenReturn(List.of(line(order, bookA, 2, new BigDecimal("100.00"))));
-    when(transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(eq(orgId),
+    when(transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(eq(orgId),
         eq(TransactionType.REFUND), any(Instant.class), any(Instant.class)))
         .thenReturn(List.of());
 
@@ -137,9 +137,9 @@ class ReportingServiceTest {
     RoyaltyStatement approved = statement(contract, StatementStatus.APPROVED,
         new BigDecimal("50.00"));
     RoyaltyStatement paid = statement(contract, StatementStatus.PAID, new BigDecimal("1000.00"));
-    when(statements.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(statements.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(draft, approved, paid)));
-    when(contracts.findByOrganizationId(eq(orgId))).thenReturn(List.of());
+    when(contracts.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
 
     RoyaltyLiability liability = service.royaltyLiability();
 
@@ -158,7 +158,7 @@ class ReportingServiceTest {
     manuscript.setTitle("Ga Proverbs");
     manuscript.setStage(ManuscriptStage.REVIEW);
     manuscript.setCreatedAt(Instant.now());
-    when(manuscripts.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(manuscripts.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(manuscript)));
     ManuscriptEvent toReview = event(manuscript, null, ManuscriptStage.REVIEW);
     ManuscriptEvent toApproved = event(manuscript, ManuscriptStage.PROOF, ManuscriptStage.APPROVED);

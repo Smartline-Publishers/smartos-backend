@@ -56,6 +56,18 @@ public class Organization {
   @Column(nullable = false)
   private Plan plan = Plan.FREE;
 
+  /** Organization logo: https URL or data:image/* URL managed by org admins. */
+  @Column(name = "logo_url", columnDefinition = "TEXT")
+  private String logoUrl;
+
+  /**
+   * Custom brand theme ({light:{primary,shell,secondary,tertiary},
+   * dark:{...}}). Null means the platform default theme applies.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(columnDefinition = "jsonb")
+  private Map<String, Object> theme;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(columnDefinition = "jsonb")
   private Map<String, Object> settings;
@@ -109,6 +121,22 @@ public class Organization {
 
   public void setSettings(Map<String, Object> settings) {
     this.settings = settings;
+  }
+
+  public String getLogoUrl() {
+    return logoUrl;
+  }
+
+  public void setLogoUrl(String logoUrl) {
+    this.logoUrl = logoUrl;
+  }
+
+  public Map<String, Object> getTheme() {
+    return theme;
+  }
+
+  public void setTheme(Map<String, Object> theme) {
+    this.theme = theme;
   }
 
   public Instant getCreatedAt() {

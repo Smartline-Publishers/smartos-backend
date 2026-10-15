@@ -80,18 +80,18 @@ class DashboardServiceTest {
     Instant now = Instant.now();
     Book published = book("Maths 4", BookStatus.PUBLISHED, now);
     Book draft = book("Akan Tales", BookStatus.DRAFT, now);
-    when(books.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(books.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(published, draft)));
-    when(contributors.findByOrganizationId(eq(orgId))).thenReturn(List.of());
+    when(contributors.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
     RoyaltyStatement pending = new RoyaltyStatement();
     pending.setId(UUID.randomUUID());
     pending.setOrganization(org);
     pending.setStatus(StatementStatus.DRAFT);
     pending.setPayable(new BigDecimal("100.00"));
     pending.setCreatedAt(now);
-    when(statements.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(statements.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(pending)));
-    when(statements.findByOrganizationIdAndStatus(eq(orgId), eq(StatementStatus.DRAFT),
+    when(statements.findByOrganization_IdAndStatus(eq(orgId), eq(StatementStatus.DRAFT),
         eq(Pageable.unpaged()))).thenReturn(new PageImpl<>(List.of(pending)));
     Manuscript review = new Manuscript();
     review.setId(UUID.randomUUID());
@@ -99,7 +99,7 @@ class DashboardServiceTest {
     review.setTitle("Ga Proverbs");
     review.setStage(ManuscriptStage.REVIEW);
     review.setCreatedAt(now);
-    when(manuscripts.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(manuscripts.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(review)));
     Task overdue = new Task();
     overdue.setId(UUID.randomUUID());
@@ -107,7 +107,7 @@ class DashboardServiceTest {
     overdue.setTitle("Fix proof");
     overdue.setStatus(TaskStatus.TODO);
     overdue.setDueDate(LocalDate.now().minusDays(2));
-    when(tasks.findByOrganizationId(eq(orgId), eq(Pageable.unpaged())))
+    when(tasks.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of(overdue)));
     when(inventory.levels(eq(null), eq(null), eq(null))).thenReturn(List.of(
         new StockLevelResponse(published.getId(), "Maths 4", UUID.randomUUID(), "Accra", 3)));

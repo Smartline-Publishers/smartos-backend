@@ -91,19 +91,19 @@ public class ManuscriptService {
   public Page<Manuscript> list(ManuscriptStage stage, String search, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (search != null && !search.isBlank()) {
-      return manuscripts.findByOrganizationIdAndTitleContainingIgnoreCase(orgId, search.trim(),
+      return manuscripts.findByOrganization_IdAndTitleContainingIgnoreCase(orgId, search.trim(),
           pageable);
     }
     if (stage != null) {
-      return manuscripts.findByOrganizationIdAndStage(orgId, stage, pageable);
+      return manuscripts.findByOrganization_IdAndStage(orgId, stage, pageable);
     }
-    return manuscripts.findByOrganizationId(orgId, pageable);
+    return manuscripts.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Manuscript get(UUID id) {
     UUID orgId = TenantContext.require();
-    return manuscripts.findByIdAndOrganizationId(id, orgId)
+    return manuscripts.findByIdAndOrganization_Id(id, orgId)
         .orElseThrow(() -> ApiException.notFound("Manuscript", id));
   }
 
@@ -200,7 +200,7 @@ public class ManuscriptService {
     if (bookId == null) {
       return null;
     }
-    return books.findByIdAndOrganizationId(bookId, orgId)
+    return books.findByIdAndOrganization_Id(bookId, orgId)
         .orElseThrow(() -> ApiException.notFound("Book", bookId));
   }
 
@@ -208,7 +208,7 @@ public class ManuscriptService {
     if (contributorId == null) {
       return null;
     }
-    return contributors.findByIdAndOrganizationId(contributorId, orgId)
+    return contributors.findByIdAndOrganization_Id(contributorId, orgId)
         .orElseThrow(() -> ApiException.notFound("Contributor", contributorId));
   }
 
@@ -216,7 +216,7 @@ public class ManuscriptService {
     if (assigneeId == null) {
       return null;
     }
-    return users.findByIdAndOrganizationId(assigneeId, orgId)
+    return users.findByIdAndOrganization_Id(assigneeId, orgId)
         .orElseThrow(() -> ApiException.notFound("User", assigneeId));
   }
 }

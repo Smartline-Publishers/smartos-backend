@@ -95,16 +95,16 @@ class RoyaltyServiceTest {
     LocalDate start = LocalDate.of(2026, 7, 1);
     LocalDate end = LocalDate.of(2026, 9, 30);
     Instant inPeriod = Instant.parse("2026-08-15T10:00:00Z");
-    when(contracts.findByIdAndOrganizationId(eq(contract.getId()), eq(orgId)))
+    when(contracts.findByIdAndOrganization_Id(eq(contract.getId()), eq(orgId)))
         .thenReturn(Optional.of(contract));
     when(bookContributors.findByContributorId(eq(contributorId)))
         .thenReturn(List.of(link(100.0)));
     Order order = fulfilledOrder(inPeriod);
-    when(orders.findByOrganizationIdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
+    when(orders.findByOrganization_IdAndStatus(eq(orgId), eq(OrderStatus.FULFILLED)))
         .thenReturn(List.of(order));
     when(orderItems.findByOrderId(eq(order.getId())))
         .thenReturn(List.of(line(order, 10, new BigDecimal("100.00"))));
-    when(transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(eq(orgId),
+    when(transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(eq(orgId),
         eq(TransactionType.REFUND), any(Instant.class), any(Instant.class)))
         .thenReturn(List.of(refund(order.getId(), new BigDecimal("100.00"), inPeriod)));
     when(statements.save(any(RoyaltyStatement.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -124,14 +124,14 @@ class RoyaltyServiceTest {
   @Test
   void approveMovesDraftForwardOnly() {
     RoyaltyStatement draft = statement(StatementStatus.DRAFT);
-    when(statements.findByIdAndOrganizationId(eq(draft.getId()), eq(orgId)))
+    when(statements.findByIdAndOrganization_Id(eq(draft.getId()), eq(orgId)))
         .thenReturn(Optional.of(draft));
     when(statements.save(any(RoyaltyStatement.class))).thenAnswer(inv -> inv.getArgument(0));
 
     assertEquals(StatementStatus.APPROVED, service.approve(draft.getId()).getStatus());
 
     RoyaltyStatement approved = statement(StatementStatus.APPROVED);
-    when(statements.findByIdAndOrganizationId(eq(approved.getId()), eq(orgId)))
+    when(statements.findByIdAndOrganization_Id(eq(approved.getId()), eq(orgId)))
         .thenReturn(Optional.of(approved));
 
     assertThrows(ApiException.class, () -> service.approve(approved.getId()));
@@ -141,7 +141,7 @@ class RoyaltyServiceTest {
   void payCreatesPayoutTransactionAtomically() {
     RoyaltyStatement approved = statement(StatementStatus.APPROVED);
     approved.setPayable(new BigDecimal("90.00"));
-    when(statements.findByIdAndOrganizationId(eq(approved.getId()), eq(orgId)))
+    when(statements.findByIdAndOrganization_Id(eq(approved.getId()), eq(orgId)))
         .thenReturn(Optional.of(approved));
     when(transactions.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
     when(statements.save(any(RoyaltyStatement.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -159,7 +159,7 @@ class RoyaltyServiceTest {
   @Test
   void payDraftThrows400AndPostsNothing() {
     RoyaltyStatement draft = statement(StatementStatus.DRAFT);
-    when(statements.findByIdAndOrganizationId(eq(draft.getId()), eq(orgId)))
+    when(statements.findByIdAndOrganization_Id(eq(draft.getId()), eq(orgId)))
         .thenReturn(Optional.of(draft));
 
     ApiException ex = assertThrows(ApiException.class, () -> service.pay(draft.getId()));
@@ -171,7 +171,7 @@ class RoyaltyServiceTest {
   @Test
   void generateOnTerminatedContractThrows400() {
     contract.setStatus(ContractStatus.TERMINATED);
-    when(contracts.findByIdAndOrganizationId(eq(contract.getId()), eq(orgId)))
+    when(contracts.findByIdAndOrganization_Id(eq(contract.getId()), eq(orgId)))
         .thenReturn(Optional.of(contract));
 
     GenerateStatementRequest req = new GenerateStatementRequest();

@@ -9,12 +9,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
-  Page<Transaction> findByOrganizationIdOrderByCreatedAtDesc(UUID organizationId,
+  Page<Transaction> findByOrganization_IdOrderByCreatedAtDesc(UUID organizationId,
       Pageable pageable);
-  Page<Transaction> findByOrganizationIdAndTypeOrderByCreatedAtDesc(UUID organizationId,
+  Page<Transaction> findByOrganization_IdAndTypeOrderByCreatedAtDesc(UUID organizationId,
       TransactionType type, Pageable pageable);
-  Page<Transaction> findByOrganizationIdAndCategoryOrderByCreatedAtDesc(UUID organizationId,
+  Page<Transaction> findByOrganization_IdAndCategoryOrderByCreatedAtDesc(UUID organizationId,
       String category, Pageable pageable);
-  List<Transaction> findByOrganizationIdAndTypeAndCreatedAtBetween(UUID organizationId,
+  List<Transaction> findByOrganization_IdAndTypeAndCreatedAtBetween(UUID organizationId,
       TransactionType type, Instant start, Instant end);
 }

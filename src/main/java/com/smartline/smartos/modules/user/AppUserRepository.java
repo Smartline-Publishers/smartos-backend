@@ -8,10 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
-  Optional<AppUser> findByOrganizationIdAndEmail(UUID organizationId, String email);
-  boolean existsByOrganizationIdAndEmail(UUID organizationId, String email);
-  Page<AppUser> findByOrganizationId(UUID organizationId, Pageable pageable);
-  Optional<AppUser> findByIdAndOrganizationId(UUID id, UUID organizationId);
+  Optional<AppUser> findByOrganization_IdAndEmail(UUID organizationId, String email);
+  boolean existsByOrganization_IdAndEmail(UUID organizationId, String email);
+  Page<AppUser> findByOrganization_Id(UUID organizationId, Pageable pageable);
+  Optional<AppUser> findByIdAndOrganization_Id(UUID id, UUID organizationId);
   List<AppUser> findByEmailIgnoreCase(String email);
-  long countByOrganizationId(UUID organizationId);
+  long countByOrganization_Id(UUID organizationId);
 }

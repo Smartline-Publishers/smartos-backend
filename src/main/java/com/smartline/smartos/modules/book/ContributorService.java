@@ -44,12 +44,12 @@ public class ContributorService {
 
   @Transactional(readOnly = true)
   public Page<Contributor> list(Pageable pageable) {
-    return contributors.findByOrganizationId(TenantContext.require(), pageable);
+    return contributors.findByOrganization_Id(TenantContext.require(), pageable);
   }
 
   @Transactional(readOnly = true)
   public Contributor get(UUID id) {
-    return contributors.findByIdAndOrganizationId(id, TenantContext.require())
+    return contributors.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Contributor", id));
   }
 

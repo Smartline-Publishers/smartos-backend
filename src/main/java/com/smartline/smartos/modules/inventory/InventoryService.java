@@ -50,7 +50,7 @@ public class InventoryService {
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
     String name = req.getName().trim();
-    if (warehouses.existsByOrganizationIdAndName(orgId, name)) {
+    if (warehouses.existsByOrganization_IdAndName(orgId, name)) {
       throw ApiException.conflict("Warehouse name already exists in organization: " + name);
     }
     Warehouse warehouse = new Warehouse();
@@ -62,12 +62,12 @@ public class InventoryService {
 
   @Transactional(readOnly = true)
   public List<Warehouse> listWarehouses() {
-    return warehouses.findByOrganizationIdOrderByName(TenantContext.require());
+    return warehouses.findByOrganization_IdOrderByName(TenantContext.require());
   }
 
   @Transactional(readOnly = true)
   public Warehouse getWarehouse(UUID id) {
-    return warehouses.findByIdAndOrganizationId(id, TenantContext.require())
+    return warehouses.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Warehouse", id));
   }
 
@@ -76,7 +76,7 @@ public class InventoryService {
   public void deleteWarehouse(UUID id) {
     UUID orgId = TenantContext.require();
     Warehouse warehouse = getWarehouse(id);
-    if (movements.existsByOrganizationIdAndWarehouseId(orgId, id)) {
+    if (movements.existsByOrganization_IdAndWarehouseId(orgId, id)) {
       throw ApiException.conflict("Warehouse has stock history and cannot be deleted");
     }
     warehouses.delete(warehouse);
@@ -104,9 +104,9 @@ public class InventoryService {
         || type == MovementType.OUT && qtyDelta > 0) {
       throw ApiException.badRequest("Movement sign must match its type");
     }
-    Book book = books.findByIdAndOrganizationId(bookId, orgId)
+    Book book = books.findByIdAndOrganization_Id(bookId, orgId)
         .orElseThrow(() -> ApiException.notFound("Book", bookId));
-    Warehouse warehouse = warehouses.findByIdAndOrganizationId(warehouseId, orgId)
+    Warehouse warehouse = warehouses.findByIdAndOrganization_Id(warehouseId, orgId)
         .orElseThrow(() -> ApiException.notFound("Warehouse", warehouseId));
     int resulting = currentLevel(orgId, bookId, warehouseId) + qtyDelta;
     if (resulting < 0 && !(type == MovementType.ADJUSTMENT && callerIsAdmin())) {
@@ -145,20 +145,20 @@ public class InventoryService {
   public Page<StockMovement> listMovements(UUID bookId, UUID warehouseId, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (bookId != null) {
-      return movements.findByOrganizationIdAndBookIdOrderByCreatedAtDesc(orgId, bookId, pageable);
+      return movements.findByOrganization_IdAndBookIdOrderByCreatedAtDesc(orgId, bookId, pageable);
     }
     if (warehouseId != null) {
-      return movements.findByOrganizationIdAndWarehouseIdOrderByCreatedAtDesc(orgId, warehouseId,
+      return movements.findByOrganization_IdAndWarehouseIdOrderByCreatedAtDesc(orgId, warehouseId,
           pageable);
     }
-    return movements.findByOrganizationIdOrderByCreatedAtDesc(orgId, pageable);
+    return movements.findByOrganization_IdOrderByCreatedAtDesc(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public List<StockLevelResponse> levels(UUID bookId, UUID warehouseId, Integer below) {
     UUID orgId = TenantContext.require();
     Map<List<UUID>, Integer> sums = new HashMap<>();
-    for (StockMovement m : movements.findByOrganizationId(orgId)) {
+    for (StockMovement m : movements.findByOrganization_Id(orgId)) {
       UUID b = m.getBook() != null ? m.getBook().getId() : null;
       UUID w = m.getWarehouse() != null ? m.getWarehouse().getId() : null;
       if (b == null || w == null) {
@@ -190,7 +190,7 @@ public class InventoryService {
   public int currentLevel(UUID orgId, UUID bookId, UUID warehouseId) {
     // Summed on read so levels can never drift from the ledger. For very
     // large histories this should move to a materialized query.
-    return movements.findByOrganizationId(orgId).stream()
+    return movements.findByOrganization_Id(orgId).stream()
         .filter(m -> m.getBook() != null && bookId.equals(m.getBook().getId())
             && m.getWarehouse() != null && warehouseId.equals(m.getWarehouse().getId()))
         .mapToInt(StockMovement::getQtyDelta)

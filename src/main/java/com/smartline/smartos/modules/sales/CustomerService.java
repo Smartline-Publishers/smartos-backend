@@ -50,15 +50,15 @@ public class CustomerService {
   public Page<Customer> list(String search, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (search != null && !search.isBlank()) {
-      return customers.findByOrganizationIdAndNameContainingIgnoreCase(orgId, search.trim(),
+      return customers.findByOrganization_IdAndNameContainingIgnoreCase(orgId, search.trim(),
           pageable);
     }
-    return customers.findByOrganizationId(orgId, pageable);
+    return customers.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Customer get(UUID id) {
-    return customers.findByIdAndOrganizationId(id, TenantContext.require())
+    return customers.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Customer", id));
   }
 
@@ -92,7 +92,7 @@ public class CustomerService {
   public void delete(UUID id) {
     UUID orgId = TenantContext.require();
     Customer customer = get(id);
-    if (orders.existsByOrganizationIdAndCustomerId(orgId, customer.getId())) {
+    if (orders.existsByOrganization_IdAndCustomerId(orgId, customer.getId())) {
       throw ApiException.conflict("Customer has orders and cannot be deleted");
     }
     customers.delete(customer);

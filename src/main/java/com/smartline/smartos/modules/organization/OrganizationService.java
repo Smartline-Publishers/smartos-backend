@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.organization;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.media.MediaService;
 import com.smartline.smartos.modules.audit.Audited;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.UserPrincipal;
@@ -10,14 +11,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class OrganizationService {
 
   private final OrganizationRepository repository;
+  private final MediaService media;
 
-  public OrganizationService(OrganizationRepository repository) {
+  public OrganizationService(OrganizationRepository repository, MediaService media) {
     this.repository = repository;
+    this.media = media;
   }
 
   @Transactional
@@ -77,6 +81,79 @@ public class OrganizationService {
         .orElseThrow(() -> ApiException.notFound("Organization", id));
     org.setPlan(plan);
     return repository.save(org);
+  }
+
+  /**
+   * Self-service update for the caller's own organization (branding, slug,
+   * theme). Tenant isolation comes from the JWT claim, never from client
+   * input, so one organization can never touch another's branding.
+   */
+  @Transactional
+  @Audited(action = "organization.update", entityType = "Organization")
+  public Organization updateCurrent(OrganizationDtos.UpdateOrganizationRequest req) {
+    Organization org = current();
+    if (req.getName() != null && !req.getName().isBlank()) {
+      String name = req.getName().trim();
+      if (!name.equals(org.getName()) && repository.existsByName(name)) {
+        throw ApiException.conflict("Organization name already exists: " + name);
+      }
+      org.setName(name);
+    }
+    if (req.getSlug() != null && !req.getSlug().isBlank()) {
+      String slug = req.getSlug().trim().toLowerCase();
+      if (!slug.matches("[a-z0-9]+(?:-[a-z0-9]+)*")) {
+        throw ApiException.badRequest(
+            "Slug may only contain lowercase letters, numbers, and single hyphens");
+      }
+      if (!slug.equals(org.getSlug()) && repository.existsBySlug(slug)) {
+        throw ApiException.conflict("Organization slug already exists: " + slug);
+      }
+      org.setSlug(slug);
+    }
+    if (Boolean.TRUE.equals(req.getClearLogo())) {
+      org.setLogoUrl(null);
+    } else if (req.getLogoUrl() != null) {
+      org.setLogoUrl(validatedLogoUrl(req.getLogoUrl()));
+    }
+    if (req.getTheme() != null) {
+      org.setTheme(OrgTheme.validated(req.getTheme()));
+    }
+    return repository.save(org);
+  }
+
+  @Transactional
+  @Audited(action = "organization.theme.reset", entityType = "Organization")
+  public Organization clearTheme() {
+    Organization org = current();
+    org.setTheme(null);
+    return repository.save(org);
+  }
+
+  @Transactional
+  @Audited(action = "organization.logo.update", entityType = "Organization")
+  public Organization uploadLogo(MultipartFile file) {
+    Organization org = current();
+    org.setLogoUrl(media.replace(org.getLogoUrl(), file, "smartos/" + org.getId() + "/branding"));
+    return repository.save(org);
+  }
+
+  static String validatedLogoUrl(String raw) {
+    String url = raw.trim();
+    if (url.isEmpty()) {
+      throw ApiException.badRequest("Logo URL must not be empty");
+    }
+    if (url.startsWith("data:image/")) {
+      // Inline uploads without object storage: cap at ~700KB encoded.
+      if (url.length() > 700_000 || !url.contains(";base64,")) {
+        throw ApiException.badRequest("Logo image is too large or not base64-encoded");
+      }
+      return url;
+    }
+    if ((url.startsWith("https://") || url.startsWith("http://")) && url.length() <= 2048
+        && !url.contains(" ")) {
+      return url;
+    }
+    throw ApiException.badRequest("Logo must be an http(s) URL or a data:image/* URL");
   }
 
   private UserPrincipal currentPrincipal() {

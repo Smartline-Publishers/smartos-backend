@@ -80,9 +80,9 @@ class OrderServiceTest {
   @Test
   void createComputesTotalServerSide() {
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(customers.findByIdAndOrganizationId(eq(customer.getId()), eq(orgId)))
+    when(customers.findByIdAndOrganization_Id(eq(customer.getId()), eq(orgId)))
         .thenReturn(Optional.of(customer));
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
     when(orders.save(any(Order.class))).thenAnswer(inv -> {
       Order o = inv.getArgument(0);
@@ -109,7 +109,7 @@ class OrderServiceTest {
     Order order = confirmedOrder(new BigDecimal("100.00"));
     OrderItem line = line(order, 2, new BigDecimal("50.00"));
     UUID warehouseId = UUID.randomUUID();
-    when(orders.findByIdAndOrganizationId(eq(order.getId()), eq(orgId)))
+    when(orders.findByIdAndOrganization_Id(eq(order.getId()), eq(orgId)))
         .thenReturn(Optional.of(order));
     when(items.findByOrderId(eq(order.getId()))).thenReturn(List.of(line));
     when(transactions.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -132,7 +132,7 @@ class OrderServiceTest {
     Order order = confirmedOrder(new BigDecimal("100.00"));
     OrderItem line = line(order, 200, new BigDecimal("0.50"));
     UUID warehouseId = UUID.randomUUID();
-    when(orders.findByIdAndOrganizationId(eq(order.getId()), eq(orgId)))
+    when(orders.findByIdAndOrganization_Id(eq(order.getId()), eq(orgId)))
         .thenReturn(Optional.of(order));
     when(items.findByOrderId(eq(order.getId()))).thenReturn(List.of(line));
     when(inventory.recordMovement(eq(book.getId()), eq(warehouseId), eq(-200),
@@ -155,7 +155,7 @@ class OrderServiceTest {
     order.setOrganization(org);
     order.setCustomer(customer);
     order.setStatus(OrderStatus.DRAFT);
-    when(orders.findByIdAndOrganizationId(eq(order.getId()), eq(orgId)))
+    when(orders.findByIdAndOrganization_Id(eq(order.getId()), eq(orgId)))
         .thenReturn(Optional.of(order));
 
     assertThrows(ApiException.class, () -> service.fulfil(order.getId(), UUID.randomUUID()));
@@ -168,7 +168,7 @@ class OrderServiceTest {
     order.setOrganization(org);
     order.setCustomer(customer);
     order.setStatus(OrderStatus.DRAFT);
-    when(orders.findByIdAndOrganizationId(eq(order.getId()), eq(orgId)))
+    when(orders.findByIdAndOrganization_Id(eq(order.getId()), eq(orgId)))
         .thenReturn(Optional.of(order));
     when(items.findByOrderId(eq(order.getId()))).thenReturn(List.of());
 

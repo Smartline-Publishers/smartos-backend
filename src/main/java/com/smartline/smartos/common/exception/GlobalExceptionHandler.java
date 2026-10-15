@@ -5,6 +5,10 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.data.core.PropertyReferenceException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -15,6 +19,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiResponse<?>> handleValidation(MethodArgumentNotValidException ex) {
@@ -38,6 +44,24 @@ public class GlobalExceptionHandler {
             "Unknown sort property: " + ex.getPropertyName(), null));
   }
 
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ApiResponse<?>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    String name = ex.getName();
+    Object value = ex.getValue();
+    log.debug("Type mismatch for parameter '{}': {}", name, value);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(),
+            "Invalid value '" + value + "' for parameter '" + name + "'", null));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiResponse<?>> handleUnreadable(HttpMessageNotReadableException ex) {
+    log.debug("Unreadable request body", ex);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(ApiResponse.error(ErrorCode.BAD_REQUEST.getCode(),
+            "Malformed request body", null));
+  }
+
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException ex) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -58,7 +82,24 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<?>> handleFallback(Exception ex) {
+    // Never swallow server errors silently: the response stays generic, but the
+    // stack trace must reach the logs so 500s are diagnosable.
+    log.error("Unhandled exception handling {} {}", currentMethod(), currentPath(), ex);
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), "Unexpected error", null));
+  }
+
+  private static String currentMethod() {
+    org.springframework.web.context.request.ServletRequestAttributes attrs =
+        (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder
+            .getRequestAttributes();
+    return attrs != null ? attrs.getRequest().getMethod() : "?";
+  }
+
+  private static String currentPath() {
+    org.springframework.web.context.request.ServletRequestAttributes attrs =
+        (org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder
+            .getRequestAttributes();
+    return attrs != null ? attrs.getRequest().getRequestURI() : "?";
   }
 }

@@ -82,7 +82,7 @@ class FinanceServiceTest {
     order.setId(UUID.randomUUID());
     order.setStatus(OrderStatus.CONFIRMED);
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(orders.findByIdAndOrganizationId(eq(order.getId()), eq(orgId)))
+    when(orders.findByIdAndOrganization_Id(eq(order.getId()), eq(orgId)))
         .thenReturn(Optional.of(order));
 
     CreateTransactionRequest req = new CreateTransactionRequest();

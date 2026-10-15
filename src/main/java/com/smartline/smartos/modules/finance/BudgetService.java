@@ -52,12 +52,12 @@ public class BudgetService {
 
   @Transactional(readOnly = true)
   public Page<Budget> list(Pageable pageable) {
-    return budgets.findByOrganizationId(TenantContext.require(), pageable);
+    return budgets.findByOrganization_Id(TenantContext.require(), pageable);
   }
 
   @Transactional(readOnly = true)
   public Budget get(UUID id) {
-    return budgets.findByIdAndOrganizationId(id, TenantContext.require())
+    return budgets.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("Budget", id));
   }
 
@@ -117,7 +117,7 @@ public class BudgetService {
     Instant from = budget.getPeriodStart().atStartOfDay(ZoneOffset.UTC).toInstant();
     Instant to = budget.getPeriodEnd().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
     BigDecimal actual = BigDecimal.ZERO;
-    for (Transaction t : transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(orgId,
+    for (Transaction t : transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(orgId,
         TransactionType.EXPENSE, from, to)) {
       if (budget.getCategory() == null || budget.getCategory().equals(t.getCategory())) {
         actual = actual.add(t.getAmount());

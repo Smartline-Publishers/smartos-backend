@@ -8,10 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ManuscriptRepository extends JpaRepository<Manuscript, UUID> {
-  Optional<Manuscript> findByIdAndOrganizationId(UUID id, UUID organizationId);
-  Page<Manuscript> findByOrganizationId(UUID organizationId, Pageable pageable);
-  Page<Manuscript> findByOrganizationIdAndStage(UUID organizationId, ManuscriptStage stage,
+  Optional<Manuscript> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+  Page<Manuscript> findByOrganization_Id(UUID organizationId, Pageable pageable);
+  Page<Manuscript> findByOrganization_IdAndStage(UUID organizationId, ManuscriptStage stage,
       Pageable pageable);
-  Page<Manuscript> findByOrganizationIdAndTitleContainingIgnoreCase(UUID organizationId,
+  Page<Manuscript> findByOrganization_IdAndTitleContainingIgnoreCase(UUID organizationId,
       String title, Pageable pageable);
 }

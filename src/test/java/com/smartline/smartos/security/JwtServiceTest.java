@@ -65,6 +65,23 @@ class JwtServiceTest {
   }
 
   @Test
+  void consecutiveRefreshTokensAreUnique() {
+    // Regression: JWT timestamps resolve to seconds, so tokens minted back to
+    // back must still differ (jti), or their hashes collide on the
+    // refresh_tokens unique constraint and refresh intermittently 500s.
+    JwtService service = new JwtService(BASE64_SECRET, 900000, 604800000);
+    UUID userId = UUID.randomUUID();
+    UUID orgId = UUID.randomUUID();
+
+    String first = service.generateRefreshToken(userId, orgId);
+    String second = service.generateRefreshToken(userId, orgId);
+
+    assertTrue(service.isValid(first));
+    assertTrue(service.isValid(second));
+    assertTrue(!first.equals(second), "expected distinct refresh tokens");
+  }
+
+  @Test
   void tamperedAndGarbageTokensAreRejected() {
     JwtService service = new JwtService(BASE64_SECRET, 900000, 604800000);
     String token = service.generateAccessToken(UUID.randomUUID(), UUID.randomUUID(), List.of());

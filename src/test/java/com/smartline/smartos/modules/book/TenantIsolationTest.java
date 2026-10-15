@@ -42,11 +42,11 @@ class TenantIsolationTest {
     UUID orgA = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgA);
     var pageable = PageRequest.of(0, 10);
-    when(books.findByOrganizationId(eq(orgA), eq(pageable))).thenReturn(Page.empty(pageable));
+    when(books.findByOrganization_Id(eq(orgA), eq(pageable))).thenReturn(Page.empty(pageable));
 
     new BookService(books, organizations, movements, links, contributors).list(null, null, pageable);
 
-    verify(books).findByOrganizationId(eq(orgA), eq(pageable));
+    verify(books).findByOrganization_Id(eq(orgA), eq(pageable));
   }
 
   @Test
@@ -55,12 +55,12 @@ class TenantIsolationTest {
     UUID orgB = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgA);
     var pageable = PageRequest.of(0, 5);
-    when(contributors.findByOrganizationId(eq(orgA), eq(pageable)))
+    when(contributors.findByOrganization_Id(eq(orgA), eq(pageable)))
         .thenReturn(Page.empty(pageable));
 
     new ContributorService(contributors, organizations, contracts).list(pageable);
 
-    verify(contributors).findByOrganizationId(eq(orgA), eq(pageable));
+    verify(contributors).findByOrganization_Id(eq(orgA), eq(pageable));
     // orgB must never leak into the query for orgA's context
     assertNotEquals(orgA, orgB);
   }

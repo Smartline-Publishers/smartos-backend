@@ -3,6 +3,7 @@ package com.smartline.smartos.modules.organization;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -11,6 +12,7 @@ import com.smartline.smartos.common.exception.ApiException;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.UserPrincipal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -31,6 +33,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class OrganizationServiceTest {
 
   @Mock private OrganizationRepository repository;
+  @Mock private com.smartline.smartos.media.MediaService media;
 
   private OrganizationService service;
   private Organization orgA;
@@ -38,7 +41,7 @@ class OrganizationServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new OrganizationService(repository);
+    service = new OrganizationService(repository, media);
     orgA = org("Acme", "acme");
     orgB = org("Globex", "globex");
   }
@@ -102,6 +105,100 @@ class OrganizationServiceTest {
     Organization updated = service.changePlan(orgA.getId(), Organization.Plan.GROWTH);
 
     assertEquals(Organization.Plan.GROWTH, updated.getPlan());
+  }
+
+  @Test
+  void updateCurrentChangesNameSlugLogoAndTheme() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+    when(repository.save(any(Organization.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    OrganizationDtos.UpdateOrganizationRequest req = new OrganizationDtos.UpdateOrganizationRequest();
+    req.setName("Acme Press");
+    req.setSlug("acme-press");
+    req.setLogoUrl("https://cdn.acme.test/logo.png");
+    req.setTheme(Map.of("light", mode("#1d4ed8", "#ffffff"), "dark", mode("#93c5fd", "#0a0a0a")));
+
+    Organization updated = service.updateCurrent(req);
+
+    assertEquals("Acme Press", updated.getName());
+    assertEquals("acme-press", updated.getSlug());
+    assertEquals("https://cdn.acme.test/logo.png", updated.getLogoUrl());
+    assertEquals("#1d4ed8", ((Map<?, ?>) updated.getTheme().get("light")).get("primary"));
+  }
+
+  @Test
+  void updateCurrentRejectsDuplicateSlug() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+    when(repository.existsBySlug("taken")).thenReturn(true);
+
+    OrganizationDtos.UpdateOrganizationRequest req = new OrganizationDtos.UpdateOrganizationRequest();
+    req.setSlug("taken");
+
+    ApiException ex = assertThrows(ApiException.class, () -> service.updateCurrent(req));
+
+    assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+  }
+
+  @Test
+  void updateCurrentRejectsBadSlugAndLogo() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+
+    OrganizationDtos.UpdateOrganizationRequest badSlug = new OrganizationDtos.UpdateOrganizationRequest();
+    badSlug.setSlug("Not A Slug!");
+    assertEquals(HttpStatus.BAD_REQUEST,
+        assertThrows(ApiException.class, () -> service.updateCurrent(badSlug)).getStatus());
+
+    OrganizationDtos.UpdateOrganizationRequest badLogo = new OrganizationDtos.UpdateOrganizationRequest();
+    badLogo.setLogoUrl("ftp://acme.test/logo.png");
+    assertEquals(HttpStatus.BAD_REQUEST,
+        assertThrows(ApiException.class, () -> service.updateCurrent(badLogo)).getStatus());
+  }
+
+  @Test
+  void updateCurrentRejectsInvalidTheme() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+
+    OrganizationDtos.UpdateOrganizationRequest req = new OrganizationDtos.UpdateOrganizationRequest();
+    req.setTheme(Map.of("light", mode("#dc2626", "#f5f7fb")));
+
+    assertEquals(HttpStatus.BAD_REQUEST,
+        assertThrows(ApiException.class, () -> service.updateCurrent(req)).getStatus());
+  }
+
+  @Test
+  void clearThemeResetsToDefault() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    orgA.setTheme(Map.of("light", mode("#1d4ed8", "#ffffff")));
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+    when(repository.save(any(Organization.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    assertEquals(null, service.clearTheme().getTheme());
+  }
+
+  @Test
+  void uploadLogoStoresHostedUrl() {
+    authenticate(Role.ORG_ADMIN, orgA.getId());
+    when(repository.findById(orgA.getId())).thenReturn(Optional.of(orgA));
+    when(repository.save(any(Organization.class))).thenAnswer(inv -> inv.getArgument(0));
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile("file", "logo.png", "image/png",
+            new byte[] {1, 2, 3});
+    when(media.replace(eq(orgA.getLogoUrl()), eq(file), eq("smartos/" + orgA.getId() + "/branding")))
+        .thenReturn("https://res.cloudinary.com/demo/image/upload/v1/logo.png");
+
+    Organization updated = service.uploadLogo(file);
+
+    assertEquals("https://res.cloudinary.com/demo/image/upload/v1/logo.png",
+        updated.getLogoUrl());
+  }
+
+  private static java.util.Map<String, Object> mode(String primary, String shell) {
+    return Map.of("primary", primary, "shell", shell, "secondary", "#64748b",
+        "tertiary", "#2563eb", "sidebar", "#0a0a0a");
   }
 
   private Organization org(String name, String slug) {

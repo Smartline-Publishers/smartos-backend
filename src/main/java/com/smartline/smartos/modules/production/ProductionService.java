@@ -49,11 +49,11 @@ public class ProductionService {
     UUID orgId = TenantContext.require();
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
-    Book book = books.findByIdAndOrganizationId(req.getBookId(), orgId)
+    Book book = books.findByIdAndOrganization_Id(req.getBookId(), orgId)
         .orElseThrow(() -> ApiException.notFound("Book", req.getBookId()));
     Manuscript manuscript = null;
     if (req.getManuscriptId() != null) {
-      manuscript = manuscripts.findByIdAndOrganizationId(req.getManuscriptId(), orgId)
+      manuscript = manuscripts.findByIdAndOrganization_Id(req.getManuscriptId(), orgId)
           .orElseThrow(() -> ApiException.notFound("Manuscript", req.getManuscriptId()));
     }
     ProductionJob job = new ProductionJob();
@@ -71,17 +71,17 @@ public class ProductionService {
   public Page<ProductionJob> listJobs(JobStatus status, UUID bookId, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (status != null) {
-      return jobs.findByOrganizationIdAndStatus(orgId, status, pageable);
+      return jobs.findByOrganization_IdAndStatus(orgId, status, pageable);
     }
     if (bookId != null) {
-      return jobs.findByOrganizationIdAndBookId(orgId, bookId, pageable);
+      return jobs.findByOrganization_IdAndBookId(orgId, bookId, pageable);
     }
-    return jobs.findByOrganizationId(orgId, pageable);
+    return jobs.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public ProductionJob getJob(UUID id) {
-    return jobs.findByIdAndOrganizationId(id, TenantContext.require())
+    return jobs.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("ProductionJob", id));
   }
 
@@ -193,7 +193,7 @@ public class ProductionService {
 
   private PrintRun scopedRun(UUID runId) {
     UUID orgId = TenantContext.require();
-    return runs.findByIdAndJobOrganizationId(runId, orgId)
+    return runs.findByIdAndJob_Organization_Id(runId, orgId)
         .orElseThrow(() -> ApiException.notFound("PrintRun", runId));
   }
 }

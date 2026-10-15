@@ -67,7 +67,7 @@ public class RoyaltyService {
     if (req.getPeriodEnd().isBefore(req.getPeriodStart())) {
       throw ApiException.badRequest("Statement period end must not precede start");
     }
-    Contract contract = contracts.findByIdAndOrganizationId(req.getContractId(), orgId)
+    Contract contract = contracts.findByIdAndOrganization_Id(req.getContractId(), orgId)
         .orElseThrow(() -> ApiException.notFound("Contract", req.getContractId()));
     if (contract.getStatus() != ContractStatus.ACTIVE) {
       throw ApiException.badRequest("Statements can only be generated for active contracts");
@@ -79,7 +79,7 @@ public class RoyaltyService {
 
     Map<UUID, BigDecimal> revenueByBook = new HashMap<>();
     Map<UUID, BigDecimal> orderTotals = new HashMap<>();
-    for (Order order : orders.findByOrganizationIdAndStatus(orgId, OrderStatus.FULFILLED)) {
+    for (Order order : orders.findByOrganization_IdAndStatus(orgId, OrderStatus.FULFILLED)) {
       if (!inWindow(order.getUpdatedAt(), from, to)) {
         continue;
       }
@@ -99,7 +99,7 @@ public class RoyaltyService {
           revenueByBook.merge(bookId, line, BigDecimal::add));
     }
     Map<UUID, BigDecimal> refundsByBook = new HashMap<>();
-    for (Transaction refund : transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(orgId,
+    for (Transaction refund : transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(orgId,
         TransactionType.REFUND, from, to)) {
       if (!"ORDER".equals(refund.getReferenceType()) || refund.getReferenceId() == null) {
         continue;
@@ -147,14 +147,14 @@ public class RoyaltyService {
   public Page<RoyaltyStatement> list(StatementStatus status, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (status != null) {
-      return statements.findByOrganizationIdAndStatus(orgId, status, pageable);
+      return statements.findByOrganization_IdAndStatus(orgId, status, pageable);
     }
-    return statements.findByOrganizationId(orgId, pageable);
+    return statements.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public RoyaltyStatement get(UUID id) {
-    return statements.findByIdAndOrganizationId(id, TenantContext.require())
+    return statements.findByIdAndOrganization_Id(id, TenantContext.require())
         .orElseThrow(() -> ApiException.notFound("RoyaltyStatement", id));
   }
 

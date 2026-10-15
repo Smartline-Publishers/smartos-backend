@@ -66,14 +66,14 @@ class ContractServiceTest {
   @Test
   void terminateMovesActiveForwardOnly() {
     Contract contract = contract(ContractStatus.ACTIVE);
-    when(contracts.findByIdAndOrganizationId(eq(contract.getId()), eq(orgId)))
+    when(contracts.findByIdAndOrganization_Id(eq(contract.getId()), eq(orgId)))
         .thenReturn(Optional.of(contract));
     when(contracts.save(any(Contract.class))).thenAnswer(inv -> inv.getArgument(0));
 
     assertEquals(ContractStatus.TERMINATED, service.terminate(contract.getId()).getStatus());
 
     Contract terminated = contract(ContractStatus.TERMINATED);
-    when(contracts.findByIdAndOrganizationId(eq(terminated.getId()), eq(orgId)))
+    when(contracts.findByIdAndOrganization_Id(eq(terminated.getId()), eq(orgId)))
         .thenReturn(Optional.of(terminated));
 
     assertThrows(ApiException.class, () -> service.terminate(terminated.getId()));
@@ -82,7 +82,7 @@ class ContractServiceTest {
   @Test
   void deleteContractWithStatementsThrows409() {
     Contract contract = contract(ContractStatus.ACTIVE);
-    when(contracts.findByIdAndOrganizationId(eq(contract.getId()), eq(orgId)))
+    when(contracts.findByIdAndOrganization_Id(eq(contract.getId()), eq(orgId)))
         .thenReturn(Optional.of(contract));
     when(statements.existsByContractId(eq(contract.getId()))).thenReturn(true);
 
@@ -95,7 +95,7 @@ class ContractServiceTest {
   @Test
   void createLinksScopedContributor() {
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(contributors.findByIdAndOrganizationId(eq(contributor.getId()), eq(orgId)))
+    when(contributors.findByIdAndOrganization_Id(eq(contributor.getId()), eq(orgId)))
         .thenReturn(Optional.of(contributor));
     when(contracts.save(any(Contract.class))).thenAnswer(inv -> inv.getArgument(0));
 

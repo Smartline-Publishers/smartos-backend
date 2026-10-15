@@ -5,6 +5,7 @@ import com.smartline.smartos.security.AuthDtos.LoginRequest;
 import com.smartline.smartos.security.AuthDtos.RefreshRequest;
 import com.smartline.smartos.security.AuthDtos.RegisterOrgRequest;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
+import com.smartline.smartos.security.AuthDtos.TwoFactorVerifyRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,12 @@ public class AuthController {
   @PostMapping("/login")
   public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest req) {
     return ApiResponse.ok(authService.login(req));
+  }
+
+  @PostMapping("/2fa/verify")
+  public ApiResponse<TokenResponse> verifyTwoFactor(
+      @Valid @RequestBody TwoFactorVerifyRequest req) {
+    return ApiResponse.ok(authService.verifyTwoFactor(req));
   }
 
   @PostMapping("/refresh")

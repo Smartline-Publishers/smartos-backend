@@ -46,19 +46,24 @@ public final class OrganizationDtos {
     private String plan;
     private Map<String, Integer> limits;
     private Map<String, Object> settings;
+    private String logoUrl;
+    private Map<String, Object> theme;
     private Instant createdAt;
 
     public OrganizationResponse() {
     }
 
     public OrganizationResponse(UUID id, String name, String slug, String plan,
-        Map<String, Integer> limits, Map<String, Object> settings, Instant createdAt) {
+        Map<String, Integer> limits, Map<String, Object> settings, String logoUrl,
+        Map<String, Object> theme, Instant createdAt) {
       this.id = id;
       this.name = name;
       this.slug = slug;
       this.plan = plan;
       this.limits = limits;
       this.settings = settings;
+      this.logoUrl = logoUrl;
+      this.theme = theme;
       this.createdAt = createdAt;
     }
 
@@ -110,6 +115,22 @@ public final class OrganizationDtos {
       this.settings = settings;
     }
 
+    public String getLogoUrl() {
+      return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+      this.logoUrl = logoUrl;
+    }
+
+    public Map<String, Object> getTheme() {
+      return theme;
+    }
+
+    public void setTheme(Map<String, Object> theme) {
+      this.theme = theme;
+    }
+
     public Instant getCreatedAt() {
       return createdAt;
     }
@@ -124,7 +145,63 @@ public final class OrganizationDtos {
           : Map.of();
       return new OrganizationResponse(o.getId(), o.getName(), o.getSlug(),
           o.getPlan() != null ? o.getPlan().name() : null, limits, o.getSettings(),
-          o.getCreatedAt());
+          o.getLogoUrl(), o.getTheme(), o.getCreatedAt());
+    }
+  }
+
+  /**
+   * Partial organization update. Null fields are left untouched; use
+   * {@code DELETE /organizations/current/theme} to reset the custom theme and
+   * {@code clearLogo=true} to remove the logo.
+   */
+  public static class UpdateOrganizationRequest {
+    private String name;
+    private String slug;
+    private String logoUrl;
+    private Boolean clearLogo;
+    private Map<String, Object> theme;
+
+    public UpdateOrganizationRequest() {
+    }
+
+    public String getName() {
+      return name;
+    }
+
+    public void setName(String name) {
+      this.name = name;
+    }
+
+    public String getSlug() {
+      return slug;
+    }
+
+    public void setSlug(String slug) {
+      this.slug = slug;
+    }
+
+    public String getLogoUrl() {
+      return logoUrl;
+    }
+
+    public void setLogoUrl(String logoUrl) {
+      this.logoUrl = logoUrl;
+    }
+
+    public Boolean getClearLogo() {
+      return clearLogo;
+    }
+
+    public void setClearLogo(Boolean clearLogo) {
+      this.clearLogo = clearLogo;
+    }
+
+    public Map<String, Object> getTheme() {
+      return theme;
+    }
+
+    public void setTheme(Map<String, Object> theme) {
+      this.theme = theme;
     }
   }
 }

@@ -8,9 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ContractRepository extends JpaRepository<Contract, UUID> {
-  Optional<Contract> findByIdAndOrganizationId(UUID id, UUID organizationId);
-  Page<Contract> findByOrganizationId(UUID organizationId, Pageable pageable);
+  Optional<Contract> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+  Page<Contract> findByOrganization_Id(UUID organizationId, Pageable pageable);
   List<Contract> findByContributorId(UUID contributorId);
   boolean existsByContributorId(UUID contributorId);
-  List<Contract> findByOrganizationId(UUID organizationId);
+  List<Contract> findByOrganization_Id(UUID organizationId);
 }

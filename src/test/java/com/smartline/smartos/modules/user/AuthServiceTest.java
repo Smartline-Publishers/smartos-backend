@@ -36,12 +36,14 @@ class AuthServiceTest {
   @Mock private RefreshTokenRepository refreshTokens;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
+  @Mock private TwoFactorService twoFactor;
 
   private AuthService service;
 
   @BeforeEach
   void setUp() {
-    service = new AuthService(users, organizations, refreshTokens, passwordEncoder, jwtService);
+    service = new AuthService(users, organizations, refreshTokens, passwordEncoder, jwtService,
+        twoFactor);
   }
 
   @Test
@@ -87,7 +89,7 @@ class AuthServiceTest {
     assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
   }
 
-  @Test
+@Test
   void loginToleratesDuplicateRefreshStore() {
     Organization org = org();
     AppUser user = user(org, "admin@acme.test");
@@ -96,18 +98,25 @@ class AuthServiceTest {
     when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN")),
         eq("admin@acme.test")))
         .thenReturn("access");
-    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()))).thenReturn("refresh");
+    // The login flow now uses storeRefreshWithRetry which handles retries internally.
+    // We just need to verify that save is called twice (first fails, second succeeds)
+    // and that the final refresh token is returned.
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId())))
+        .thenReturn("refresh-1", "refresh-2");
     RefreshToken existing = new RefreshToken();
     existing.setId(UUID.randomUUID());
-    when(refreshTokens.save(any(RefreshToken.class)))
+    when(refreshTokens.saveAndFlush(any(RefreshToken.class)))
         .thenThrow(new org.springframework.dao.DataIntegrityViolationException("dup"))
-        .thenAnswer(inv -> inv.getArgument(0));
-    when(refreshTokens.findByTokenHash(any(String.class))).thenReturn(Optional.of(existing));
+        .thenAnswer(inv -> {
+          RefreshToken r = inv.getArgument(0);
+          if (r.getId() == null) r.setId(UUID.randomUUID());
+          return r;
+        });
 
     TokenResponse tokens = service.login(new LoginRequest("admin@acme.test", "secret123", null));
 
     assertEquals("access", tokens.getAccessToken());
-    assertEquals("refresh", tokens.getRefreshToken());
+    assertEquals("refresh-2", tokens.getRefreshToken()); // Second token returned
   }
 
   @Test

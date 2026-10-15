@@ -51,6 +51,17 @@ public class AppUser implements BelongsToOrganization {
   @Column(nullable = false)
   private boolean active = true;
 
+  /** Profile picture: https URL or data:image/* URL managed by the user. */
+  @Column(name = "avatar_url", columnDefinition = "TEXT")
+  private String avatarUrl;
+
+  /** TOTP secret for two-factor authentication (null until 2FA setup). */
+  @Column(name = "totp_secret", length = 128)
+  private String totpSecret;
+
+  @Column(name = "totp_enabled", nullable = false)
+  private boolean totpEnabled = false;
+
   @CreatedBy
   @Column(name = "created_by")
   private UUID createdBy;
@@ -124,6 +135,30 @@ public class AppUser implements BelongsToOrganization {
 
   public void setActive(boolean active) {
     this.active = active;
+  }
+
+  public String getAvatarUrl() {
+    return avatarUrl;
+  }
+
+  public void setAvatarUrl(String avatarUrl) {
+    this.avatarUrl = avatarUrl;
+  }
+
+  public String getTotpSecret() {
+    return totpSecret;
+  }
+
+  public void setTotpSecret(String totpSecret) {
+    this.totpSecret = totpSecret;
+  }
+
+  public boolean isTotpEnabled() {
+    return totpEnabled;
+  }
+
+  public void setTotpEnabled(boolean totpEnabled) {
+    this.totpEnabled = totpEnabled;
   }
 
   public UUID getCreatedBy() {

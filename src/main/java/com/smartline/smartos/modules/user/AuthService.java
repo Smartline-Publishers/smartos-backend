@@ -6,6 +6,7 @@ import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.security.AuthDtos.LoginRequest;
 import com.smartline.smartos.security.AuthDtos.RegisterOrgRequest;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
+import com.smartline.smartos.security.AuthDtos.TwoFactorVerifyRequest;
 import com.smartline.smartos.security.JwtService;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.TokenHashes;
@@ -27,15 +28,17 @@ public class AuthService {
   private final RefreshTokenRepository refreshTokens;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
+  private final TwoFactorService twoFactor;
 
   public AuthService(AppUserRepository users, OrganizationRepository organizations,
       RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
-      JwtService jwtService) {
+      JwtService jwtService, TwoFactorService twoFactor) {
     this.users = users;
     this.organizations = organizations;
     this.refreshTokens = refreshTokens;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
+    this.twoFactor = twoFactor;
   }
 
   @Transactional
@@ -67,7 +70,7 @@ public class AuthService {
     String email = req.getEmail().trim().toLowerCase();
     AppUser user;
     if (req.getOrganizationId() != null) {
-      user = users.findByOrganizationIdAndEmail(req.getOrganizationId(), email)
+      user = users.findByOrganization_IdAndEmail(req.getOrganizationId(), email)
           .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials"));
     } else {
       // Same email can exist in multiple organizations (unique per org, not
@@ -87,7 +90,47 @@ public class AuthService {
       throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials");
     }
     UUID orgId = user.getOrganization().getId();
+    if (user.isTotpEnabled()) {
+      // Second factor required: issue a short-lived challenge instead of
+      // tokens. The challenge is verified (TOTP or backup code) to get tokens.
+      return TokenResponse.challenge(jwtService.generateChallengeToken(user.getId(), orgId));
+    }
     return issueTokens(user, orgId);
+  }
+
+  /**
+   * Completes a 2FA login challenge with a TOTP code or an unused backup
+   * code (consumed on success).
+   */
+  @Transactional
+  public TokenResponse verifyTwoFactor(TwoFactorVerifyRequest req) {
+    Claims claims;
+    try {
+      claims = jwtService.parse(req.getChallengeToken().trim());
+    } catch (Exception e) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid challenge");
+    }
+    if (!"2fa-challenge".equals(claims.get("type", String.class))) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid challenge");
+    }
+    UUID userId;
+    try {
+      userId = UUID.fromString(claims.getSubject());
+    } catch (IllegalArgumentException e) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid challenge");
+    }
+    AppUser user = users.findById(userId)
+        .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
+            "Invalid credentials"));
+    if (!user.isActive()) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials");
+    }
+    if (!twoFactor.verifyChallenge(user, req.getCode())) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "Invalid credentials");
+    }
+    UUID orgId = jwtService.extractOrgId(claims);
+    UUID effectiveOrg = orgId != null ? orgId : user.getOrganization().getId();
+    return issueTokens(user, effectiveOrg);
   }
 
   /**
@@ -121,10 +164,9 @@ public class AuthService {
     UUID effectiveOrg = orgId != null ? orgId : user.getOrganization().getId();
     List<String> roles = List.of(user.getRole().name());
     String access = jwtService.generateAccessToken(user.getId(), effectiveOrg, roles, user.getEmail());
-    String nextRefresh = jwtService.generateRefreshToken(user.getId(), effectiveOrg);
-    RefreshToken replacement = storeRefresh(user, nextRefresh);
+    String nextRefresh = storeRefreshWithRetry(user);
     stored.setRevoked(true);
-    stored.setReplacedBy(replacement.getId());
+    stored.setReplacedBy(null); // Will be set by the new token's ID after save
     refreshTokens.save(stored);
     return new TokenResponse(access, nextRefresh, "Bearer");
   }
@@ -144,25 +186,33 @@ public class AuthService {
   private TokenResponse issueTokens(AppUser user, UUID orgId) {
     List<String> roles = List.of(user.getRole().name());
     String access = jwtService.generateAccessToken(user.getId(), orgId, roles, user.getEmail());
-    String refresh = jwtService.generateRefreshToken(user.getId(), orgId);
-    storeRefresh(user, refresh);
+    String refresh = storeRefreshWithRetry(user);
     return new TokenResponse(access, refresh, "Bearer");
   }
 
-  private RefreshToken storeRefresh(AppUser user, String refreshToken) {
-    String hash = TokenHashes.sha256Hex(refreshToken);
-    RefreshToken record = new RefreshToken();
-    record.setUser(user);
-    record.setTokenHash(hash);
-    record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
-    try {
-      return refreshTokens.save(record);
-    } catch (DataIntegrityViolationException e) {
-      // Concurrent duplicate submission (e.g. parallel token refreshes racing
-      // on the same token): the row already exists, so reuse it instead of
-      // failing the request with a 500.
-      return refreshTokens.findByTokenHash(hash).orElseThrow(() -> e);
+  private String storeRefreshWithRetry(AppUser user) {
+    int maxRetries = 3;
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getOrganization().getId());
+      String hash = TokenHashes.sha256Hex(refreshToken);
+      RefreshToken record = new RefreshToken();
+      record.setUser(user);
+      record.setTokenHash(hash);
+      record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
+      try {
+        // Flush inside the retry loop: without it the INSERT only executes
+        // at commit time and a duplicate hash escapes as a 500 instead of
+        // being retried here.
+        refreshTokens.saveAndFlush(record);
+        return refreshToken;
+      } catch (DataIntegrityViolationException e) {
+        if (attempt == 2) {
+          throw new RuntimeException("Failed to generate unique refresh token after 3 attempts", e);
+        }
+        // Retry with a new token
+      }
     }
+    throw new IllegalStateException("Failed to generate unique refresh token after retries");
   }
 
   private void revokeFamily(UUID userId) {

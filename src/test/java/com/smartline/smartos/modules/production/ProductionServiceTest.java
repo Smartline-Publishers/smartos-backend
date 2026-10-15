@@ -72,7 +72,7 @@ class ProductionServiceTest {
     ProductionJob job = jobAt(JobStatus.IN_PROGRESS);
     PrintRun run = runOf(job, 500, false);
     UUID warehouseId = UUID.randomUUID();
-    when(runs.findByIdAndJobOrganizationId(eq(run.getId()), eq(orgId)))
+    when(runs.findByIdAndJob_Organization_Id(eq(run.getId()), eq(orgId)))
         .thenReturn(Optional.of(run));
     when(runs.save(any(PrintRun.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -89,7 +89,7 @@ class ProductionServiceTest {
   void doublePostThrows409AndWritesNothing() {
     ProductionJob job = jobAt(JobStatus.IN_PROGRESS);
     PrintRun run = runOf(job, 500, true);
-    when(runs.findByIdAndJobOrganizationId(eq(run.getId()), eq(orgId)))
+    when(runs.findByIdAndJob_Organization_Id(eq(run.getId()), eq(orgId)))
         .thenReturn(Optional.of(run));
 
     ApiException ex = assertThrows(ApiException.class,
@@ -105,7 +105,7 @@ class ProductionServiceTest {
   void postOnPlannedJobThrows400() {
     ProductionJob job = jobAt(JobStatus.PLANNED);
     PrintRun run = runOf(job, 100, false);
-    when(runs.findByIdAndJobOrganizationId(eq(run.getId()), eq(orgId)))
+    when(runs.findByIdAndJob_Organization_Id(eq(run.getId()), eq(orgId)))
         .thenReturn(Optional.of(run));
 
     assertThrows(ApiException.class, () -> service.postRun(run.getId(), UUID.randomUUID()));
@@ -114,7 +114,7 @@ class ProductionServiceTest {
   @Test
   void completeWithUnpostedRunsThrows400() {
     ProductionJob job = jobAt(JobStatus.IN_PROGRESS);
-    when(jobs.findByIdAndOrganizationId(eq(job.getId()), eq(orgId)))
+    when(jobs.findByIdAndOrganization_Id(eq(job.getId()), eq(orgId)))
         .thenReturn(Optional.of(job));
     when(runs.existsByJobIdAndPostedFalse(eq(job.getId()))).thenReturn(true);
 
@@ -126,7 +126,7 @@ class ProductionServiceTest {
   @Test
   void cancelWithPostedRunsThrows409() {
     ProductionJob job = jobAt(JobStatus.IN_PROGRESS);
-    when(jobs.findByIdAndOrganizationId(eq(job.getId()), eq(orgId)))
+    when(jobs.findByIdAndOrganization_Id(eq(job.getId()), eq(orgId)))
         .thenReturn(Optional.of(job));
     when(runs.existsByJobIdAndPostedTrue(eq(job.getId()))).thenReturn(true);
 
@@ -138,7 +138,7 @@ class ProductionServiceTest {
   @Test
   void createRunOnCompletedJobThrows400() {
     ProductionJob job = jobAt(JobStatus.COMPLETED);
-    when(jobs.findByIdAndOrganizationId(eq(job.getId()), eq(orgId)))
+    when(jobs.findByIdAndOrganization_Id(eq(job.getId()), eq(orgId)))
         .thenReturn(Optional.of(job));
 
     CreateRunRequest req = new CreateRunRequest();
@@ -150,7 +150,7 @@ class ProductionServiceTest {
   @Test
   void createJobLinksScopedBook() {
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
-    when(books.findByIdAndOrganizationId(eq(book.getId()), eq(orgId)))
+    when(books.findByIdAndOrganization_Id(eq(book.getId()), eq(orgId)))
         .thenReturn(Optional.of(book));
     when(jobs.save(any(ProductionJob.class))).thenAnswer(inv -> inv.getArgument(0));
 

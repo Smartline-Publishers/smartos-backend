@@ -74,7 +74,7 @@ public class ReportingService {
     Instant end = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
     Map<UUID, SalesAccumulator> byBook = new HashMap<>();
     Map<UUID, String> titles = new HashMap<>();
-    for (Order order : orders.findByOrganizationIdAndStatus(orgId, OrderStatus.FULFILLED)) {
+    for (Order order : orders.findByOrganization_IdAndStatus(orgId, OrderStatus.FULFILLED)) {
       if (!inWindow(order.getUpdatedAt(), start, end)) {
         continue;
       }
@@ -90,7 +90,7 @@ public class ReportingService {
             item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
       }
     }
-    for (Transaction refund : transactions.findByOrganizationIdAndTypeAndCreatedAtBetween(orgId,
+    for (Transaction refund : transactions.findByOrganization_IdAndTypeAndCreatedAtBetween(orgId,
         TransactionType.REFUND, start, end)) {
       if (!"ORDER".equals(refund.getReferenceType()) || refund.getReferenceId() == null) {
         continue;
@@ -164,7 +164,7 @@ public class ReportingService {
     BigDecimal approved = BigDecimal.ZERO;
     BigDecimal paid = BigDecimal.ZERO;
     Map<UUID, BigDecimal> pendingByContract = new HashMap<>();
-    for (RoyaltyStatement s : statements.findByOrganizationId(orgId, Pageable.unpaged())) {
+    for (RoyaltyStatement s : statements.findByOrganization_Id(orgId, Pageable.unpaged())) {
       switch (s.getStatus()) {
         case DRAFT -> {
           draft = draft.add(s.getPayable());
@@ -178,7 +178,7 @@ public class ReportingService {
       }
     }
     Map<UUID, String> names = new HashMap<>();
-    contracts.findByOrganizationId(orgId).forEach(c -> {
+    contracts.findByOrganization_Id(orgId).forEach(c -> {
       if (c.getContributor() != null) {
         names.put(c.getId(), c.getContributor().getFullName());
       }
@@ -205,7 +205,7 @@ public class ReportingService {
     int submitted = 0;
     int approved = 0;
     Map<ManuscriptStage, Integer> transitions = new HashMap<>();
-    for (Manuscript m : manuscripts.findByOrganizationId(orgId, Pageable.unpaged())) {
+    for (Manuscript m : manuscripts.findByOrganization_Id(orgId, Pageable.unpaged())) {
       if (m.getCreatedAt() != null && !m.getCreatedAt().isBefore(start)) {
         submitted++;
       }

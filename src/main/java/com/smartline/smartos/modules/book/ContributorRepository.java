@@ -7,7 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ContributorRepository extends JpaRepository<Contributor, UUID> {
-  Page<Contributor> findByOrganizationId(UUID organizationId, Pageable pageable);
-  java.util.Optional<Contributor> findByIdAndOrganizationId(UUID id, UUID organizationId);
-  List<Contributor> findByOrganizationId(UUID organizationId);
+  Page<Contributor> findByOrganization_Id(UUID organizationId, Pageable pageable);
+  java.util.Optional<Contributor> findByIdAndOrganization_Id(UUID id, UUID organizationId);
+  List<Contributor> findByOrganization_Id(UUID organizationId);
 }

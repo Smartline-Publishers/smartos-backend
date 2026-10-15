@@ -7,13 +7,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StockMovementRepository extends JpaRepository<StockMovement, UUID> {
-  List<StockMovement> findByOrganizationId(UUID organizationId);
-  Page<StockMovement> findByOrganizationIdOrderByCreatedAtDesc(UUID organizationId,
+  List<StockMovement> findByOrganization_Id(UUID organizationId);
+  Page<StockMovement> findByOrganization_IdOrderByCreatedAtDesc(UUID organizationId,
       Pageable pageable);
-  Page<StockMovement> findByOrganizationIdAndBookIdOrderByCreatedAtDesc(UUID organizationId,
+  Page<StockMovement> findByOrganization_IdAndBookIdOrderByCreatedAtDesc(UUID organizationId,
       UUID bookId, Pageable pageable);
-  Page<StockMovement> findByOrganizationIdAndWarehouseIdOrderByCreatedAtDesc(UUID organizationId,
+  Page<StockMovement> findByOrganization_IdAndWarehouseIdOrderByCreatedAtDesc(UUID organizationId,
       UUID warehouseId, Pageable pageable);
-  boolean existsByOrganizationIdAndBookId(UUID organizationId, UUID bookId);
-  boolean existsByOrganizationIdAndWarehouseId(UUID organizationId, UUID warehouseId);
+  boolean existsByOrganization_IdAndBookId(UUID organizationId, UUID bookId);
+  boolean existsByOrganization_IdAndWarehouseId(UUID organizationId, UUID warehouseId);
 }

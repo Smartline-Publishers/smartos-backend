@@ -62,21 +62,21 @@ public class TaskService {
   public Page<Task> list(TaskStatus status, String search, UUID assigneeId, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (search != null && !search.isBlank()) {
-      return tasks.findByOrganizationIdAndTitleContainingIgnoreCase(orgId, search.trim(), pageable);
+      return tasks.findByOrganization_IdAndTitleContainingIgnoreCase(orgId, search.trim(), pageable);
     }
     if (status != null) {
-      return tasks.findByOrganizationIdAndStatus(orgId, status, pageable);
+      return tasks.findByOrganization_IdAndStatus(orgId, status, pageable);
     }
     if (assigneeId != null) {
-      return tasks.findByOrganizationIdAndAssigneeId(orgId, assigneeId, pageable);
+      return tasks.findByOrganization_IdAndAssigneeId(orgId, assigneeId, pageable);
     }
-    return tasks.findByOrganizationId(orgId, pageable);
+    return tasks.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Task get(UUID id) {
     UUID orgId = TenantContext.require();
-    return tasks.findByIdAndOrganizationId(id, orgId)
+    return tasks.findByIdAndOrganization_Id(id, orgId)
         .orElseThrow(() -> ApiException.notFound("Task", id));
   }
 
@@ -122,7 +122,7 @@ public class TaskService {
     if (assigneeId == null) {
       return null;
     }
-    return users.findByIdAndOrganizationId(assigneeId, orgId)
+    return users.findByIdAndOrganization_Id(assigneeId, orgId)
         .orElseThrow(() -> ApiException.notFound("User", assigneeId));
   }
 
@@ -130,7 +130,7 @@ public class TaskService {
     if (bookId == null) {
       return null;
     }
-    return books.findByIdAndOrganizationId(bookId, orgId)
+    return books.findByIdAndOrganization_Id(bookId, orgId)
         .orElseThrow(() -> ApiException.notFound("Book", bookId));
   }
 
@@ -138,7 +138,7 @@ public class TaskService {
     if (manuscriptId == null) {
       return null;
     }
-    return manuscripts.findByIdAndOrganizationId(manuscriptId, orgId)
+    return manuscripts.findByIdAndOrganization_Id(manuscriptId, orgId)
         .orElseThrow(() -> ApiException.notFound("Manuscript", manuscriptId));
   }
 }

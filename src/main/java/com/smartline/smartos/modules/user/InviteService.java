@@ -90,10 +90,10 @@ public class InviteService {
     }
     Organization org = invite.getOrganization();
     UUID orgId = org.getId();
-    if (users.existsByOrganizationIdAndEmail(orgId, invite.getEmail())) {
+    if (users.existsByOrganization_IdAndEmail(orgId, invite.getEmail())) {
       throw ApiException.conflict("User email already exists in organization");
     }
-    if (users.countByOrganizationId(orgId) >= org.getPlan().getMaxUsers()) {
+    if (users.countByOrganization_Id(orgId) >= org.getPlan().getMaxUsers()) {
       throw ApiException.planLimit("Organization user quota reached for plan "
           + org.getPlan().name());
     }

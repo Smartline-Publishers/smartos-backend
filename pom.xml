@@ -98,6 +98,13 @@
       <version>${springdoc.version}</version>
     </dependency>
 
+    <!-- Cloudinary image uploads (avatars, organization logos). -->
+    <dependency>
+      <groupId>com.cloudinary</groupId>
+      <artifactId>cloudinary-http44</artifactId>
+      <version>1.39.0</version>
+    </dependency>
+
     <!-- NOTE: Lombok intentionally not used. Its annotation processor does not
          run reliably on the project's JDK 25 toolchain, so all accessors and
          constructors are handwritten (see docs/ARCHITECTURE.md). -->

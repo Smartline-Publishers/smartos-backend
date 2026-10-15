@@ -32,7 +32,7 @@ public class AuditLogController {
   public ApiResponse<PageResponse<AuditLogResponse>> list(Pageable pageable) {
     UUID orgId = TenantContext.require();
     Map<UUID, String> names = new HashMap<>();
-    users.findByOrganizationId(orgId, Paging.capped(pageable)).getContent()
+    users.findByOrganization_Id(orgId, Paging.capped(pageable)).getContent()
         .forEach(u -> names.put(u.getId(), u.getFullName()));
     return ApiResponse.ok(PageResponse.from(
         service.list(Paging.capped(pageable)).map(log -> toResponse(log,

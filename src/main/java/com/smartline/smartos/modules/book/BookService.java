@@ -43,12 +43,12 @@ public class BookService {
   public Book create(CreateBookRequest req) {
     UUID orgId = TenantContext.require();
     if (req.getIsbn() != null && !req.getIsbn().isBlank()
-        && books.existsByOrganizationIdAndIsbn(orgId, req.getIsbn().trim())) {
+        && books.existsByOrganization_IdAndIsbn(orgId, req.getIsbn().trim())) {
       throw ApiException.conflict("ISBN already exists in organization: " + req.getIsbn());
     }
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
-    if (books.countByOrganizationId(orgId) >= org.getPlan().getMaxBooks()) {
+    if (books.countByOrganization_Id(orgId) >= org.getPlan().getMaxBooks()) {
       throw ApiException.planLimit("Organization book quota reached for plan "
           + org.getPlan().name());
     }
@@ -68,22 +68,22 @@ public class BookService {
   public Page<Book> list(BookStatus status, String search, Pageable pageable) {
     UUID orgId = TenantContext.require();
     if (status != null && search != null && !search.isBlank()) {
-      return books.findByOrganizationIdAndStatusAndTitleContainingIgnoreCase(
+      return books.findByOrganization_IdAndStatusAndTitleContainingIgnoreCase(
           orgId, status, search.trim(), pageable);
     }
     if (status != null) {
-      return books.findByOrganizationIdAndStatus(orgId, status, pageable);
+      return books.findByOrganization_IdAndStatus(orgId, status, pageable);
     }
     if (search != null && !search.isBlank()) {
-      return books.findByOrganizationIdAndTitleContainingIgnoreCase(orgId, search.trim(), pageable);
+      return books.findByOrganization_IdAndTitleContainingIgnoreCase(orgId, search.trim(), pageable);
     }
-    return books.findByOrganizationId(orgId, pageable);
+    return books.findByOrganization_Id(orgId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Book get(UUID id) {
     UUID orgId = TenantContext.require();
-    return books.findByIdAndOrganizationId(id, orgId)
+    return books.findByIdAndOrganization_Id(id, orgId)
         .orElseThrow(() -> ApiException.notFound("Book", id));
   }
 
@@ -100,7 +100,7 @@ public class BookService {
     }
     if (req.getIsbn() != null && !req.getIsbn().isBlank()
         && !req.getIsbn().trim().equals(book.getIsbn())
-        && books.existsByOrganizationIdAndIsbn(orgId, req.getIsbn().trim())) {
+        && books.existsByOrganization_IdAndIsbn(orgId, req.getIsbn().trim())) {
       throw ApiException.conflict("ISBN already exists in organization: " + req.getIsbn());
     } else if (req.getIsbn() != null) {
       book.setIsbn(req.getIsbn().trim());
@@ -125,7 +125,7 @@ public class BookService {
   public void delete(UUID id) {
     UUID orgId = TenantContext.require();
     Book book = get(id);
-    if (movements.existsByOrganizationIdAndBookId(orgId, book.getId())) {
+    if (movements.existsByOrganization_IdAndBookId(orgId, book.getId())) {
       throw ApiException.conflict("Book has inventory history and cannot be deleted");
     }
     books.delete(book);
@@ -139,7 +139,7 @@ public class BookService {
       Contributor contributor = link.getContributor();
       String fullName = contributor != null ? contributor.getFullName() : null;
       if (fullName == null && contributor != null) {
-        fullName = contributors.findByIdAndOrganizationId(contributor.getId(),
+        fullName = contributors.findByIdAndOrganization_Id(contributor.getId(),
                 TenantContext.require())
             .map(Contributor::getFullName)
             .orElse(null);
@@ -154,7 +154,7 @@ public class BookService {
   public BookLinkResponse linkContributor(UUID bookId, LinkContributorRequest req) {
     UUID orgId = TenantContext.require();
     Book book = get(bookId);
-    Contributor contributor = contributors.findByIdAndOrganizationId(req.getContributorId(), orgId)
+    Contributor contributor = contributors.findByIdAndOrganization_Id(req.getContributorId(), orgId)
         .orElseThrow(() -> ApiException.notFound("Contributor", req.getContributorId()));
     if (links.existsByBookIdAndContributorId(book.getId(), contributor.getId())) {
       throw ApiException.conflict("Contributor is already linked to this book");

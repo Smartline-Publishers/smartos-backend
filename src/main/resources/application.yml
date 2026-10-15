@@ -18,6 +18,10 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 6MB
 
 springdoc:
   api-docs:
@@ -32,6 +36,13 @@ app:
     refresh-expiry-ms: 604800000
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  cloudinary:
+    # Image uploads (avatars, logos). All three must be set; when any is
+    # blank the upload endpoints answer 501 and URL-based images keep working.
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    max-bytes: 5242880
 
 logging:
   level:

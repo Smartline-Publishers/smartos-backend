@@ -98,9 +98,9 @@ class InviteServiceTest {
     Invite invite = pendingInvite();
     when(invites.findByTokenHash(eq(TokenHashes.sha256Hex("plain-token"))))
         .thenReturn(Optional.of(invite));
-    when(users.existsByOrganizationIdAndEmail(eq(orgId), eq("editor@acme.test")))
+    when(users.existsByOrganization_IdAndEmail(eq(orgId), eq("editor@acme.test")))
         .thenReturn(false);
-    when(users.countByOrganizationId(eq(orgId))).thenReturn(1L);
+    when(users.countByOrganization_Id(eq(orgId))).thenReturn(1L);
     when(passwordEncoder.encode("secret123")).thenReturn("hash");
     when(users.save(any(AppUser.class))).thenAnswer(inv -> {
       AppUser u = inv.getArgument(0);
@@ -127,9 +127,9 @@ class InviteServiceTest {
     Invite invite = pendingInvite();
     when(invites.findByTokenHash(eq(TokenHashes.sha256Hex("plain-token"))))
         .thenReturn(Optional.of(invite));
-    when(users.existsByOrganizationIdAndEmail(eq(orgId), eq("editor@acme.test")))
+    when(users.existsByOrganization_IdAndEmail(eq(orgId), eq("editor@acme.test")))
         .thenReturn(false);
-    when(users.countByOrganizationId(eq(orgId))).thenReturn(1L);
+    when(users.countByOrganization_Id(eq(orgId))).thenReturn(1L);
     when(passwordEncoder.encode("secret123")).thenReturn("hash");
     when(users.save(any(AppUser.class))).thenAnswer(inv -> {
       AppUser u = inv.getArgument(0);
@@ -172,9 +172,9 @@ class InviteServiceTest {
     Invite invite = pendingInvite();
     when(invites.findByTokenHash(eq(TokenHashes.sha256Hex("plain-token"))))
         .thenReturn(Optional.of(invite));
-    when(users.existsByOrganizationIdAndEmail(eq(orgId), eq("editor@acme.test")))
+    when(users.existsByOrganization_IdAndEmail(eq(orgId), eq("editor@acme.test")))
         .thenReturn(false);
-    when(users.countByOrganizationId(eq(orgId))).thenReturn(5L);
+    when(users.countByOrganization_Id(eq(orgId))).thenReturn(5L);
 
     AcceptInviteRequest req = new AcceptInviteRequest();
     req.setToken("plain-token");

@@ -38,7 +38,7 @@ public class ContractController {
     UUID orgId = TenantContext.require();
     String name = contract.getContributor() != null ? contract.getContributor().getFullName() : null;
     if (name == null && contract.getContributor() != null) {
-      name = contributors.findByIdAndOrganizationId(contract.getContributor().getId(), orgId)
+      name = contributors.findByIdAndOrganization_Id(contract.getContributor().getId(), orgId)
           .map(c -> c.getFullName())
           .orElse(null);
     }
