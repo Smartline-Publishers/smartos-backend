@@ -17,7 +17,10 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        format_sql: false
+        # Brackets force a literal map key: without them the language server
+        # parses `format_sql` as a nested path. Hibernate receives the same
+        # `hibernate.format_sql` property either way.
+        [format_sql]: false
   servlet:
     multipart:
       max-file-size: 6MB
@@ -46,4 +49,7 @@ app:
 
 logging:
   level:
-    com.smartline: INFO
+    # Brackets force a literal map key so the dotted logger name is not read
+    # as a nested path. Binds to the exact same `logging.level.com.smartline`
+    # property as before.
+    [com.smartline]: INFO
