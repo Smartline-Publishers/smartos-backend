@@ -97,10 +97,9 @@ public class PasswordResetService {
           devToken = rawToken;
         }
         if (!delivered && !exposeDevToken) {
-          // Never log the token/link; make the misconfiguration discoverable.
-          log.info("Password reset requested (email delivery disabled or unavailable). "
-              + "Configure app.mail.enabled/SPRING_MAIL_HOST or set "
-              + "PASSWORD_RESET_EXPOSE_DEV_TOKEN=true for local testing.");
+          // Keep the public response generic to avoid exposing account existence.
+          // The mailer logs the specific, secret-free configuration or transport failure.
+          resetTokens.invalidateAllForUser(user.getId(), Instant.now());
         }
       }
     }

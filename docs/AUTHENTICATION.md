@@ -122,16 +122,49 @@ links. Configure SMTP:
 
 ```dotenv
 MAIL_ENABLED=true
-MAIL_FROM=no-reply@your-domain.example
-SPRING_MAIL_HOST=smtp.your-domain.example
-SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=…
-SPRING_MAIL_PASSWORD=…
+EMAIL_PROVIDER=
+SMTP_SERVER=smtp.your-domain.example
+SMTP_PORT=587
+SMTP_EMAIL=mailer@your-domain.example
+SMTP_PASSWORD=…
+SMTP_USE_SSL=false
+MAIL_FROM=mailer@your-domain.example
 APP_FRONTEND_URL=https://app.your-domain.example
 ```
 
 `APP_FRONTEND_URL` is used to build the link; it must be the public web origin,
-not the API origin.
+not the API origin. The reset email uses the shared responsive SmartOS email
+layout, with an HTML version and a plain-text alternative. It has a light-theme
+fallback and adapts its surfaces and text for dark-mode clients that support
+theme media queries. New application emails should use the same shared template.
+
+Use either `SMTP_SERVER` or a supported `EMAIL_PROVIDER` preset (`gmail`,
+`outlook`, `office365`, `sendgrid`, `mailgun`, or `postmark`). A preset fills in
+the SMTP host and port only when those values are blank. `SMTP_EMAIL` and
+`SMTP_PASSWORD` are the credentials issued by the provider (Gmail commonly
+requires an app password); `MAIL_FROM` should be an address verified with the
+provider and defaults to `SMTP_EMAIL` when omitted. Port 587 uses required
+STARTTLS; port 465 uses implicit TLS unless `SMTP_USE_SSL` explicitly overrides
+it. Credentials, host, port, and TLS mode must match the provider's SMTP
+instructions. Existing `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`,
+`SPRING_MAIL_USERNAME`, and `SPRING_MAIL_PASSWORD` settings remain supported.
+
+For example, with Gmail choose `EMAIL_PROVIDER=gmail`, leave `SMTP_SERVER`
+blank, set `SMTP_PORT=587` and `SMTP_USE_SSL=false`, use the Gmail account as
+`SMTP_EMAIL` and `MAIL_FROM`, and provide a Google app password as
+`SMTP_PASSWORD` (Google account 2-Step Verification must be enabled). For a
+different provider, use its SMTP endpoint and provider-issued SMTP credentials;
+the host/port presets are `smtp-mail.outlook.com`, `smtp.office365.com`,
+`smtp.sendgrid.net`, `smtp.mailgun.org`, and `smtp.postmarkapp.com`, all on port
+587 by default. Never use an account's ordinary sign-in password unless the
+provider specifically issues it for SMTP.
+
+`MAIL_ENABLED=true` alone does not enable delivery. With missing SMTP
+configuration, the endpoint continues to return its generic success response
+to avoid disclosing whether an account exists, while the application logs a
+secret-free configuration or delivery error. Check startup/application logs
+and SMTP provider credentials when delivery fails. A failed delivery does not
+leave a usable reset token active.
 
 ### Local development without SMTP
 
@@ -272,11 +305,14 @@ bound to the RP ID.
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated web origins |
 | `APP_FRONTEND_URL` | `http://localhost:3000` | Used in reset links |
 | `MAIL_ENABLED` | `false` | Enables reset email delivery |
-| `MAIL_FROM` | `no-reply@smartos.local` | Envelope/from address |
-| `SPRING_MAIL_HOST` | empty | SMTP host; required when mail is enabled |
-| `SPRING_MAIL_PORT` | `587` | SMTP port |
-| `SPRING_MAIL_USERNAME` | empty | SMTP username |
-| `SPRING_MAIL_PASSWORD` | empty | SMTP password |
+| `EMAIL_PROVIDER` | empty | Optional host preset: `gmail`, `outlook`, `office365`, `sendgrid`, `mailgun`, or `postmark` |
+| `SMTP_SERVER` | empty | SMTP server host; required unless a provider preset is selected |
+| `SMTP_PORT` | provider default / `587` | SMTP port; 587 uses STARTTLS and 465 implicit TLS by default |
+| `SMTP_EMAIL` | empty | SMTP login name and fallback sender address |
+| `SMTP_PASSWORD` | empty | SMTP password or provider-issued SMTP credential |
+| `SMTP_USE_SSL` | inferred from port | `true` for implicit TLS; `false` for STARTTLS |
+| `MAIL_FROM` | `SMTP_EMAIL` or local fallback | Sender address; production address should be provider-verified |
+| `SPRING_MAIL_HOST/PORT/USERNAME/PASSWORD` | — | Legacy aliases, lower priority than corresponding `SMTP_*` values |
 | `PASSWORD_RESET_EXPOSE_DEV_TOKEN` | `false` | Dev only; returns the token in the response |
 | `TRUST_FORWARDED_HEADERS` | `false` | Only behind a trusted proxy that sets `X-Forwarded-For` |
 | `WEBAUTHN_RP_ID` | `localhost` | Registrable domain of the web app |
@@ -369,7 +405,7 @@ passkey CRUD, and the password show/hide control.
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | `401` on `/auth/password/forgot` | Old backend process, or a stale Bearer token | Restart the backend; clear tokens; ensure public paths omit Authorization |
-| Forgot returns `200` but no email | Mail disabled or SMTP misconfigured | Set `MAIL_ENABLED=true` + `SPRING_MAIL_HOST`; for local use `PASSWORD_RESET_EXPOSE_DEV_TOKEN=true` |
+| Forgot returns `200` but no email | Mail disabled or SMTP misconfigured | Set `MAIL_ENABLED=true` and configure `SMTP_SERVER` (or a supported `EMAIL_PROVIDER`) plus valid provider credentials; use `PASSWORD_RESET_EXPOSE_DEV_TOKEN=true` only for local testing |
 | Reset link says invalid | Expired (30 min), already used, or superseded by a newer request | Request a new link |
 | Passkey button missing | Browser/device doesn't support WebAuthn, or insecure origin | Use HTTPS or `localhost`; try a platform authenticator or password manager |
 | Passkey registration fails verification | Wrong RP ID/origin, or stale challenge | Match `WEBAUTHN_RP_ID`/`WEBAUTHN_ALLOWED_ORIGINS` to the page origin; retry |

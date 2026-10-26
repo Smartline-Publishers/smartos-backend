@@ -77,6 +77,23 @@ class PasswordResetServiceTest {
   }
 
   @Test
+  void failedDeliveryKeepsGenericResponseAndInvalidatesUndeliveredToken() {
+    service = new PasswordResetService(users, resetTokens, refreshTokens, passwordEncoder,
+        mailer, rateLimiter, TTL_MINUTES, false);
+    AppUser user = user("trace@test.local");
+    when(users.findByEmailIgnoreCase("trace@test.local")).thenReturn(List.of(user));
+    when(mailer.send(eq(user), anyString())).thenReturn(false);
+
+    ForgotResponse response = service.requestReset("trace@test.local", "203.0.113.5");
+
+    assertTrue(response.isSent());
+    assertNull(response.getDevToken());
+    verify(resetTokens).save(any(PasswordResetToken.class));
+    verify(resetTokens, org.mockito.Mockito.times(2))
+        .invalidateAllForUser(eq(user.getId()), any(Instant.class));
+  }
+
+  @Test
   void requestForUnknownEmailLooksIdenticalAndStoresNothing() {
     when(users.findByEmailIgnoreCase("nobody@test.local")).thenReturn(List.of());
 

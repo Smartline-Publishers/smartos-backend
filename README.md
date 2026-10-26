@@ -8,7 +8,7 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 
 - Java 21 bytecode (runs on JDK 21+; verified on JDK 25), Maven wrapper (`mvnw` / `mvnw.cmd` — no local Maven needed)
 - Spring Boot 4.1: Web, Data JPA, Security + JJWT, Validation, AOP (audit), Flyway, PostgreSQL driver, Springdoc OpenAPI
-- Spring Mail (optional password-reset email) and server-verified WebAuthn/FIDO2 passkeys
+- Spring Mail (optional branded transactional email) and server-verified WebAuthn/FIDO2 passkeys
 - Tests: JUnit 5 + Mockito (`src/test`)
 
 ## Prerequisites
@@ -85,7 +85,7 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 | `JWT_SECRET` | token signing — standard Base64, URL-safe Base64, or a raw passphrase of ≥32 bytes; generate with `openssl rand -base64 48` | dev-only placeholder — must override (export `JWT_SECRET` in your shell; never commit it) |
 | `CORS_ORIGINS` | allowed web origins | `http://localhost:3000` |
 | `APP_FRONTEND_URL` | public web origin used in password-reset links | `http://localhost:3000` |
-| `MAIL_ENABLED` + `SPRING_MAIL_*` | optional SMTP delivery for reset emails | disabled/empty |
+| `MAIL_ENABLED` + `EMAIL_PROVIDER` / `SMTP_*` | optional SMTP delivery for transactional email (currently password resets); legacy `SPRING_MAIL_*` is also supported | disabled/empty |
 | `PASSWORD_RESET_EXPOSE_DEV_TOKEN` | dev-only: return the reset token in the API response | `false` |
 | `TRUST_FORWARDED_HEADERS` | use `X-Forwarded-For` behind a trusted proxy | `false` |
 | `WEBAUTHN_RP_ID` / `WEBAUTHN_ALLOWED_ORIGINS` | passkey RP ID and exact allowed origins | `localhost` / `http://localhost:3000` |

@@ -22,20 +22,6 @@ spring:
     multipart:
       max-file-size: 6MB
       max-request-size: 6MB
-  # Optional SMTP transport. The mail sender is only used when
-  # app.mail.enabled=true; leave SPRING_MAIL_HOST blank to disable entirely.
-  mail:
-    host: ${SPRING_MAIL_HOST:}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -52,10 +38,16 @@ app:
   # Public base URL of the web app, used to build password-reset links.
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
   mail:
-    # Set MAIL_ENABLED=true together with SPRING_MAIL_HOST (and usually
-    # SPRING_MAIL_PORT/USERNAME/PASSWORD) to deliver reset emails.
+    # SMTP_* is the primary configuration; legacy SPRING_MAIL_* values are
+    # also read by MailConfig. Provider presets supply a host/port when omitted.
     enabled: ${MAIL_ENABLED:false}
-    from: ${MAIL_FROM:no-reply@smartos.local}
+    provider: ${EMAIL_PROVIDER:}
+    host: ${SMTP_SERVER:}
+    port: ${SMTP_PORT:}
+    username: ${SMTP_EMAIL:}
+    password: ${SMTP_PASSWORD:}
+    use-ssl: ${SMTP_USE_SSL:}
+    from: ${MAIL_FROM:${SMTP_EMAIL:no-reply@smartos.local}}
   security:
     # Only enable when a trusted reverse proxy overwrites X-Forwarded-For.
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}

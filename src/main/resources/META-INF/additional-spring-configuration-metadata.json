@@ -50,6 +50,42 @@
       "defaultValue": "no-reply@smartos.local"
     },
     {
+      "name": "app.mail.provider",
+      "type": "java.lang.String",
+      "description": "Optional SMTP provider preset; set via EMAIL_PROVIDER.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.host",
+      "type": "java.lang.String",
+      "description": "SMTP host; set via SMTP_SERVER or a provider preset.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.port",
+      "type": "java.lang.String",
+      "description": "SMTP port; set via SMTP_PORT.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.username",
+      "type": "java.lang.String",
+      "description": "SMTP login username; set via SMTP_EMAIL.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.password",
+      "type": "java.lang.String",
+      "description": "SMTP login password; set via SMTP_PASSWORD.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.use-ssl",
+      "type": "java.lang.String",
+      "description": "Whether SMTP uses implicit TLS; set via SMTP_USE_SSL.",
+      "defaultValue": ""
+    },
+    {
       "name": "app.security.trust-forwarded-headers",
       "type": "java.lang.Boolean",
       "description": "Trust forwarding headers supplied by a trusted reverse proxy.",
