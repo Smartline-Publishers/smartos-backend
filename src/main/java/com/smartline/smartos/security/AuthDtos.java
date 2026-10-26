@@ -163,6 +163,9 @@ public final class AuthDtos {
     @Email @NotBlank private String adminEmail;
     @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") private String adminPassword;
     @NotBlank private String adminFullName;
+    /** Legal document versions the administrator explicitly accepted. */
+    private String termsVersion;
+    private String privacyVersion;
 
     public RegisterOrgRequest() {
     }
@@ -214,6 +217,22 @@ public final class AuthDtos {
 
     public void setAdminFullName(String adminFullName) {
       this.adminFullName = adminFullName;
+    }
+
+    public String getTermsVersion() {
+      return termsVersion;
+    }
+
+    public void setTermsVersion(String termsVersion) {
+      this.termsVersion = termsVersion;
+    }
+
+    public String getPrivacyVersion() {
+      return privacyVersion;
+    }
+
+    public void setPrivacyVersion(String privacyVersion) {
+      this.privacyVersion = privacyVersion;
     }
   }
 

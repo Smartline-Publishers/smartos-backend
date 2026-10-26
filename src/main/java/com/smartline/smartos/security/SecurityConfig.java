@@ -64,6 +64,7 @@ public class SecurityConfig {
                 "/api/v1/auth/passkeys/options",
                 "/api/v1/auth/passkeys/verify",
                 "/api/v1/invites/accept",
+                "/api/v1/legal/documents",
                 "/api/v1/billing/webhooks/**",
                 "/actuator/health",
                 "/v3/api-docs/**",

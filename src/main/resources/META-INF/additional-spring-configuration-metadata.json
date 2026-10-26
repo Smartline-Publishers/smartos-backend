@@ -25,6 +25,114 @@
       "defaultValue": "http://localhost:3000"
     },
     {
+      "name": "app.frontend-url",
+      "type": "java.lang.String",
+      "description": "Public web app URL used to build password-reset links.",
+      "defaultValue": "http://localhost:3000"
+    },
+    {
+      "name": "app.mail.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enables password-reset email delivery when SMTP is configured.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.mail.from",
+      "type": "java.lang.String",
+      "description": "Sender address used for password-reset emails.",
+      "defaultValue": "no-reply@smartos.local"
+    },
+    {
+      "name": "app.security.trust-forwarded-headers",
+      "type": "java.lang.Boolean",
+      "description": "Trust forwarding headers supplied by a trusted reverse proxy.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.security.rate-limit.login-max-failures",
+      "type": "java.lang.Integer",
+      "description": "Maximum failed login attempts per rate-limit window.",
+      "defaultValue": 8
+    },
+    {
+      "name": "app.security.rate-limit.login-window-seconds",
+      "type": "java.lang.Long",
+      "description": "Login failure rate-limit window in seconds.",
+      "defaultValue": 600
+    },
+    {
+      "name": "app.security.rate-limit.forgot-max-requests",
+      "type": "java.lang.Integer",
+      "description": "Maximum password-reset requests per rate-limit window.",
+      "defaultValue": 4
+    },
+    {
+      "name": "app.security.rate-limit.forgot-window-seconds",
+      "type": "java.lang.Long",
+      "description": "Password-reset request rate-limit window in seconds.",
+      "defaultValue": 1800
+    },
+    {
+      "name": "app.security.rate-limit.passkey-max-failures",
+      "type": "java.lang.Integer",
+      "description": "Maximum failed passkey attempts per rate-limit window.",
+      "defaultValue": 10
+    },
+    {
+      "name": "app.security.rate-limit.passkey-window-seconds",
+      "type": "java.lang.Long",
+      "description": "Passkey failure rate-limit window in seconds.",
+      "defaultValue": 600
+    },
+    {
+      "name": "app.security.password-reset.token-ttl-minutes",
+      "type": "java.lang.Long",
+      "description": "Password-reset token time-to-live in minutes.",
+      "defaultValue": 30
+    },
+    {
+      "name": "app.security.password-reset.expose-dev-token",
+      "type": "java.lang.Boolean",
+      "description": "Exposes password-reset tokens in API responses for local development only.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.webauthn.rp-id",
+      "type": "java.lang.String",
+      "description": "WebAuthn relying-party identifier.",
+      "defaultValue": "localhost"
+    },
+    {
+      "name": "app.webauthn.rp-name",
+      "type": "java.lang.String",
+      "description": "WebAuthn relying-party display name.",
+      "defaultValue": "SmartOS"
+    },
+    {
+      "name": "app.webauthn.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Browser origins allowed to complete WebAuthn ceremonies.",
+      "defaultValue": "http://localhost:3000"
+    },
+    {
+      "name": "app.webauthn.user-verification",
+      "type": "java.lang.String",
+      "description": "WebAuthn user-verification preference.",
+      "defaultValue": "preferred"
+    },
+    {
+      "name": "app.webauthn.timeout-ms",
+      "type": "java.lang.Long",
+      "description": "WebAuthn ceremony timeout in milliseconds.",
+      "defaultValue": 60000
+    },
+    {
+      "name": "app.webauthn.challenge-ttl-seconds",
+      "type": "java.lang.Long",
+      "description": "WebAuthn challenge time-to-live in seconds.",
+      "defaultValue": 300
+    },
+    {
       "name": "app.cloudinary.cloud-name",
       "type": "java.lang.String",
       "description": "Cloudinary cloud name for image uploads. Blank disables uploads (501) while URL-based images keep working. Set via CLOUDINARY_CLOUD_NAME."

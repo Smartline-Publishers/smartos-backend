@@ -53,6 +53,9 @@ public final class InviteDtos {
     @NotBlank private String fullName;
     @NotBlank @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
+    /** Legal document versions the invitee explicitly accepted. */
+    private String termsVersion;
+    private String privacyVersion;
 
     public AcceptInviteRequest() {
     }
@@ -79,6 +82,22 @@ public final class InviteDtos {
 
     public void setPassword(String password) {
       this.password = password;
+    }
+
+    public String getTermsVersion() {
+      return termsVersion;
+    }
+
+    public void setTermsVersion(String termsVersion) {
+      this.termsVersion = termsVersion;
+    }
+
+    public String getPrivacyVersion() {
+      return privacyVersion;
+    }
+
+    public void setPrivacyVersion(String privacyVersion) {
+      this.privacyVersion = privacyVersion;
     }
   }
 

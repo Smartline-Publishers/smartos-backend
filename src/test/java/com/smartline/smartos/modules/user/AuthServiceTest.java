@@ -8,6 +8,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.modules.legal.LegalService;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.security.AuthDtos.LoginRequest;
@@ -40,13 +41,14 @@ class AuthServiceTest {
   @Mock private JwtService jwtService;
   @Mock private TwoFactorService twoFactor;
   @Mock private AuthRateLimiter rateLimiter;
+  @Mock private LegalService legalService;
 
   private AuthService service;
 
   @BeforeEach
   void setUp() {
     service = new AuthService(users, organizations, refreshTokens, passwordEncoder, jwtService,
-        twoFactor, rateLimiter);
+        twoFactor, rateLimiter, legalService);
     lenient().when(rateLimiter.loginAllowed(any(), any())).thenReturn(true);
   }
 

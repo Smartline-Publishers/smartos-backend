@@ -2,6 +2,8 @@ package com.smartline.smartos.modules.user;
 
 import com.smartline.smartos.common.exception.ApiException;
 import com.smartline.smartos.modules.audit.Audited;
+import com.smartline.smartos.modules.legal.LegalAcceptance.Context;
+import com.smartline.smartos.modules.legal.LegalService;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.modules.user.InviteDtos.AcceptInviteRequest;
@@ -38,12 +40,13 @@ public class InviteService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
   private final OnboardingProgressRepository onboardingProgress;
+  private final LegalService legalService;
   private final SecureRandom random = new SecureRandom();
 
   public InviteService(InviteRepository invites, AppUserRepository users,
       OrganizationRepository organizations, RefreshTokenRepository refreshTokens,
       PasswordEncoder passwordEncoder, JwtService jwtService,
-      OnboardingProgressRepository onboardingProgress) {
+      OnboardingProgressRepository onboardingProgress, LegalService legalService) {
     this.invites = invites;
     this.users = users;
     this.organizations = organizations;
@@ -51,6 +54,7 @@ public class InviteService {
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
     this.onboardingProgress = onboardingProgress;
+    this.legalService = legalService;
   }
 
   @Transactional
@@ -88,8 +92,14 @@ public class InviteService {
         .toList();
   }
 
+  /** Used by internal callers/tests that do not have a request context. */
   @Transactional
   public TokenResponse accept(AcceptInviteRequest req) {
+    return accept(req, null, null);
+  }
+
+  @Transactional
+  public TokenResponse accept(AcceptInviteRequest req, String ipAddress, String userAgent) {
     Invite invite = invites.findByTokenHash(TokenHashes.sha256Hex(req.getToken().trim()))
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND",
             "Invite invalid or expired"));
@@ -113,6 +123,12 @@ public class InviteService {
     user.setRole(invite.getRole());
     user.setActive(true);
     AppUser saved = users.save(user);
+
+    // Backend enforcement: no account joins the organisation without an
+    // explicit acceptance of the current terms and privacy policy.
+    legalService.requireAndRecord(saved.getId(), orgId, req.getTermsVersion(),
+        req.getPrivacyVersion(), Context.INVITE_ACCEPTANCE, invite.getId(), ipAddress, userAgent);
+
     // The invited user gets their own independent onboarding checklist, linked to them alone.
     OnboardingProgress p = new OnboardingProgress();
     p.setUserId(saved.getId());

@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.modules.legal.LegalService;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.modules.user.InviteDtos.AcceptInviteRequest;
@@ -42,6 +43,7 @@ class InviteServiceTest {
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
   @Mock private OnboardingProgressRepository onboardingProgress;
+  @Mock private LegalService legalService;
 
   private InviteService service;
   private UUID orgId;
@@ -50,7 +52,7 @@ class InviteServiceTest {
   @BeforeEach
   void setUp() {
     service = new InviteService(invites, users, organizations, refreshTokens, passwordEncoder,
-        jwtService, onboardingProgress);
+        jwtService, onboardingProgress, legalService);
     orgId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
     org = new Organization();

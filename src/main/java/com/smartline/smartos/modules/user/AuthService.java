@@ -1,6 +1,8 @@
 package com.smartline.smartos.modules.user;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.modules.legal.LegalAcceptance.Context;
+import com.smartline.smartos.modules.legal.LegalService;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.security.AuthDtos;
@@ -39,6 +41,7 @@ public class AuthService {
   private final JwtService jwtService;
   private final TwoFactorService twoFactor;
   private final AuthRateLimiter rateLimiter;
+  private final LegalService legalService;
 
   /**
    * A real BCrypt hash used to equalise timing when the email is unknown.
@@ -49,7 +52,8 @@ public class AuthService {
 
   public AuthService(AppUserRepository users, OrganizationRepository organizations,
       RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
-      JwtService jwtService, TwoFactorService twoFactor, AuthRateLimiter rateLimiter) {
+      JwtService jwtService, TwoFactorService twoFactor, AuthRateLimiter rateLimiter,
+      LegalService legalService) {
     this.users = users;
     this.organizations = organizations;
     this.refreshTokens = refreshTokens;
@@ -57,10 +61,18 @@ public class AuthService {
     this.jwtService = jwtService;
     this.twoFactor = twoFactor;
     this.rateLimiter = rateLimiter;
+    this.legalService = legalService;
+  }
+
+  /** Used by internal callers/tests that do not have a request context. */
+  @Transactional
+  public TokenResponse bootstrapOrganization(RegisterOrgRequest req) {
+    return bootstrapOrganization(req, null, null);
   }
 
   @Transactional
-  public TokenResponse bootstrapOrganization(RegisterOrgRequest req) {
+  public TokenResponse bootstrapOrganization(RegisterOrgRequest req, String ipAddress,
+      String userAgent) {
     String slug = req.getSlug().trim().toLowerCase();
     if (organizations.existsBySlug(slug)) {
       throw ApiException.conflict("Organization slug already exists: " + slug);
@@ -79,6 +91,11 @@ public class AuthService {
     admin.setRole(Role.ORG_ADMIN);
     admin.setActive(true);
     AppUser savedAdmin = users.save(admin);
+
+    // Backend enforcement: a missing or stale acceptance rolls the whole
+    // transaction back, so no organisation exists without evidence.
+    legalService.requireAndRecord(savedAdmin.getId(), saved.getId(), req.getTermsVersion(),
+        req.getPrivacyVersion(), Context.REGISTRATION, null, ipAddress, userAgent);
 
     return issueTokens(savedAdmin, saved.getId());
   }

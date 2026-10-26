@@ -70,10 +70,12 @@ public class AuthController {
   @PostMapping("/register-organization")
   @ResponseStatus(HttpStatus.CREATED)
   public ApiResponse<TokenResponse> registerOrganization(
-      @Valid @RequestBody RegisterOrgRequest req) {
+      @Valid @RequestBody RegisterOrgRequest req, HttpServletRequest request) {
     // Bootstraps the organization + its first ORG_ADMIN and returns tokens,
-    // so the new admin is signed in immediately.
-    return ApiResponse.ok(authService.bootstrapOrganization(req));
+    // so the new admin is signed in immediately. The request metadata is
+    // captured with the legal acceptance evidence.
+    return ApiResponse.ok(authService.bootstrapOrganization(req, clientIp(request),
+        request.getHeader("User-Agent")));
   }
 
   // ---- Password recovery ----
