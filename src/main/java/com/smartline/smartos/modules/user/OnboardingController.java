@@ -21,13 +21,13 @@ public class OnboardingController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("isAuthenticated()")
   public ApiResponse<ChecklistResponse> checklist() {
     return ApiResponse.ok(service.checklist());
   }
 
   @PatchMapping
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("isAuthenticated()")
   public ApiResponse<ChecklistResponse> update(@RequestBody UpdateOnboardingRequest req) {
     return ApiResponse.ok(service.update(req));
   }

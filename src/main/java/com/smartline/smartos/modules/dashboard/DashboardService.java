@@ -22,6 +22,9 @@ import com.smartline.smartos.modules.task.Task;
 import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskRepository;
 import com.smartline.smartos.modules.user.AppUserRepository;
+import com.smartline.smartos.security.Permission;
+import com.smartline.smartos.security.RolePermissions;
+import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +35,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -67,13 +71,33 @@ public class DashboardService {
     this.inventory = inventory;
   }
 
-  public DashboardSummary summary() {
+  /**
+   * Builds the dashboard for the caller's role.
+   *
+   * <p>Each section is included only when the caller's role actually holds the
+   * permission that governs it, so an editor never sees money and a finance
+   * user never sees the editorial pipeline. The API is the single source of
+   * truth: the web app renders exactly what this returns.
+   */
+  public DashboardSummary summary(UserPrincipal principal) {
     UUID orgId = TenantContext.require();
-    List<Book> allBooks = books.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
+    Set<Permission> perms = RolePermissions.forRoleNames(principal.getRoles());
+    boolean canViewBooks = perms.contains(Permission.BOOKS_READ);
+    boolean canViewEditorial = perms.contains(Permission.MANUSCRIPTS_READ);
+    boolean canViewContributors = perms.contains(Permission.CONTRIBUTORS_READ);
+    boolean canViewFinance = perms.contains(Permission.FINANCE_READ)
+        || perms.contains(Permission.ROYALTIES_READ);
+
+    List<Book> allBooks = canViewBooks
+        ? books.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
+        : List.of();
     long published = allBooks.stream().filter(b -> b.getStatus() == BookStatus.PUBLISHED).count();
-    int totalContributors = contributors.findByOrganization_Id(orgId).size();
-    List<RoyaltyStatement> allStatements =
-        statements.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
+    int totalContributors = canViewContributors
+        ? contributors.findByOrganization_Id(orgId).size()
+        : 0;
+    List<RoyaltyStatement> allStatements = canViewFinance
+        ? statements.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
+        : List.of();
     BigDecimal pending = BigDecimal.ZERO;
     for (RoyaltyStatement s : allStatements) {
       if (s.getStatus() == RoyaltyStatement.StatementStatus.DRAFT
@@ -81,19 +105,22 @@ public class DashboardService {
         pending = pending.add(s.getPayable());
       }
     }
-    List<Manuscript> allManuscripts =
-        manuscripts.findByOrganization_Id(orgId, Pageable.unpaged()).getContent();
+    List<Manuscript> allManuscripts = canViewEditorial
+        ? manuscripts.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
+        : List.of();
 
     DashboardSummary summary = new DashboardSummary();
     summary.setTotalBooks(allBooks.size());
     summary.setPublishedBooks((int) published);
     summary.setTotalContributors(totalContributors);
-    summary.setPendingRoyalties(pending);
-    summary.setManuscriptPipeline(manuscriptPipeline(allManuscripts));
-    summary.setTitlePipeline(titlePipeline(allBooks));
-    summary.setAttention(attention(orgId, allManuscripts));
+    summary.setPendingRoyalties(canViewFinance ? pending : BigDecimal.ZERO);
+    summary.setManuscriptPipeline(canViewEditorial
+        ? manuscriptPipeline(allManuscripts)
+        : List.of());
+    summary.setTitlePipeline(canViewBooks ? titlePipeline(allBooks) : List.of());
+    summary.setAttention(attention(orgId, allManuscripts, perms));
     summary.setActivity(activity(orgId));
-    summary.setTrends(trends(allBooks, allStatements));
+    summary.setTrends(trends(allBooks, allStatements, canViewFinance));
     return summary;
   }
 
@@ -126,41 +153,55 @@ public class DashboardService {
     return slices;
   }
 
-  private List<AttentionItem> attention(UUID orgId, List<Manuscript> allManuscripts) {
+  /**
+   * Items the caller can actually act on. Each source is gated by the
+   * permission that governs it, so a role never sees a nudge toward a screen
+   * it cannot open.
+   */
+  private List<AttentionItem> attention(UUID orgId, List<Manuscript> allManuscripts,
+      Set<Permission> perms) {
     List<AttentionItem> items = new ArrayList<>();
     LocalDate today = LocalDate.now(ZoneOffset.UTC);
-    tasks.findByOrganization_Id(orgId, Pageable.unpaged()).getContent().stream()
-        .filter(t -> t.getStatus() != TaskStatus.DONE
-            && t.getDueDate() != null && t.getDueDate().isBefore(today))
-        .sorted(Comparator.comparing(Task::getDueDate))
-        .limit(3)
-        .forEach(t -> items.add(new AttentionItem("task-" + t.getId(), "task",
-            "Overdue: " + t.getTitle(), "Was due " + t.getDueDate(), "high",
-            "Overdue " + t.getDueDate(), "/tasks")));
-    inventory.levels(null, null, null).stream()
-        .filter(l -> l.getQuantity() < LOW_STOCK_THRESHOLD)
-        .sorted(Comparator.comparingInt(StockLevelResponse::getQuantity))
-        .limit(3)
-        .forEach(l -> items.add(new AttentionItem("stock-" + l.getBookId() + "-" + l.getWarehouseId(),
-            "stock", "Low stock — " + l.getBookTitle(),
-            l.getQuantity() + " copies left at " + l.getWarehouseName(), "medium", null,
-            "/inventory")));
-    allManuscripts.stream()
-        .filter(m -> m.getStage() == ManuscriptStage.SUBMITTED
-            || m.getStage() == ManuscriptStage.REVIEW)
-        .sorted(Comparator.comparing(Manuscript::getCreatedAt,
-            Comparator.nullsLast(Comparator.naturalOrder())))
-        .limit(2)
-        .forEach(m -> items.add(new AttentionItem("manuscript-" + m.getId(), "approval",
-            "Review needed — " + m.getTitle(), "Awaiting editorial decision", "medium", null,
-            "/manuscripts")));
-    long drafts = statements.findByOrganization_IdAndStatus(orgId,
-            RoyaltyStatement.StatementStatus.DRAFT, Pageable.unpaged()).getTotalElements();
-    if (drafts > 0) {
-      items.add(new AttentionItem("royalties-draft", "royalty",
-          drafts + (drafts == 1 ? " royalty statement" : " royalty statements")
-              + " awaiting approval",
-          "Review and approve pending payouts", "medium", null, "/royalties"));
+    if (perms.contains(Permission.TASKS_READ)) {
+      tasks.findByOrganization_Id(orgId, Pageable.unpaged()).getContent().stream()
+          .filter(t -> t.getStatus() != TaskStatus.DONE
+              && t.getDueDate() != null && t.getDueDate().isBefore(today))
+          .sorted(Comparator.comparing(Task::getDueDate))
+          .limit(3)
+          .forEach(t -> items.add(new AttentionItem("task-" + t.getId(), "task",
+              "Overdue: " + t.getTitle(), "Was due " + t.getDueDate(), "high",
+              "Overdue " + t.getDueDate(), "/tasks")));
+    }
+    if (perms.contains(Permission.INVENTORY_READ)) {
+      inventory.levels(null, null, null).stream()
+          .filter(l -> l.getQuantity() < LOW_STOCK_THRESHOLD)
+          .sorted(Comparator.comparingInt(StockLevelResponse::getQuantity))
+          .limit(3)
+          .forEach(l -> items.add(new AttentionItem("stock-" + l.getBookId() + "-" + l.getWarehouseId(),
+              "stock", "Low stock — " + l.getBookTitle(),
+              l.getQuantity() + " copies left at " + l.getWarehouseName(), "medium", null,
+              "/inventory")));
+    }
+    if (perms.contains(Permission.MANUSCRIPTS_WRITE)) {
+      allManuscripts.stream()
+          .filter(m -> m.getStage() == ManuscriptStage.SUBMITTED
+              || m.getStage() == ManuscriptStage.REVIEW)
+          .sorted(Comparator.comparing(Manuscript::getCreatedAt,
+              Comparator.nullsLast(Comparator.naturalOrder())))
+          .limit(2)
+          .forEach(m -> items.add(new AttentionItem("manuscript-" + m.getId(), "approval",
+              "Review needed — " + m.getTitle(), "Awaiting editorial decision", "medium", null,
+              "/manuscripts")));
+    }
+    if (perms.contains(Permission.ROYALTIES_WRITE)) {
+      long drafts = statements.findByOrganization_IdAndStatus(orgId,
+              RoyaltyStatement.StatementStatus.DRAFT, Pageable.unpaged()).getTotalElements();
+      if (drafts > 0) {
+        items.add(new AttentionItem("royalties-draft", "royalty",
+            drafts + (drafts == 1 ? " royalty statement" : " royalty statements")
+                + " awaiting approval",
+            "Review and approve pending payouts", "medium", null, "/royalties"));
+      }
     }
     return items.stream().limit(MAX_ATTENTION).toList();
   }
@@ -238,7 +279,8 @@ public class DashboardService {
     };
   }
 
-  private Trends trends(List<Book> allBooks, List<RoyaltyStatement> allStatements) {
+  private Trends trends(List<Book> allBooks, List<RoyaltyStatement> allStatements,
+      boolean canViewFinance) {
     List<YearMonth> months = new ArrayList<>();
     YearMonth now = YearMonth.now(ZoneOffset.UTC);
     for (int i = 11; i >= 0; i--) {
@@ -256,10 +298,12 @@ public class DashboardService {
       }
       bookCounts.add(titles);
       BigDecimal royalties = BigDecimal.ZERO;
-      for (RoyaltyStatement s : allStatements) {
-        if (s.getCreatedAt() != null
-            && YearMonth.from(s.getCreatedAt().atZone(ZoneOffset.UTC)).equals(month)) {
-          royalties = royalties.add(s.getPayable());
+      if (canViewFinance) {
+        for (RoyaltyStatement s : allStatements) {
+          if (s.getCreatedAt() != null
+              && YearMonth.from(s.getCreatedAt().atZone(ZoneOffset.UTC)).equals(month)) {
+            royalties = royalties.add(s.getPayable());
+          }
         }
       }
       royaltySums.add(royalties);

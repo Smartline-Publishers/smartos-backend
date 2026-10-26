@@ -30,28 +30,28 @@ public class ContributorController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_contributors.read')")
   public ApiResponse<PageResponse<ContributorResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
         service.list(Paging.capped(pageable)).map(BookDtos.BookMapper::toResponse)));
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_contributors.read')")
   public ApiResponse<ContributorResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(BookDtos.BookMapper.toResponse(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR','AUTHOR')")
+  @PreAuthorize("hasAuthority('PERM_contributors.write')")
   public ApiResponse<ContributorResponse> create(@Valid @RequestBody CreateContributorRequest req) {
     return ApiResponse.ok(BookDtos.BookMapper.toResponse(service.create(req)));
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_contributors.delete')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

@@ -32,7 +32,7 @@ public class RoyaltyStatementController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_royalties.read')")
   public ApiResponse<PageResponse<RoyaltyStatementResponse>> list(
       @RequestParam(required = false) StatementStatus status,
       Pageable pageable) {
@@ -41,27 +41,27 @@ public class RoyaltyStatementController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_royalties.read')")
   public ApiResponse<RoyaltyStatementResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(RoyaltyMapper.toResponse(service.get(id)));
   }
 
   @PostMapping("/generate")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public ApiResponse<RoyaltyStatementResponse> generate(
       @Valid @RequestBody GenerateStatementRequest req) {
     return ApiResponse.ok(RoyaltyMapper.toResponse(service.generate(req)));
   }
 
   @PostMapping("/{id}/approve")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public ApiResponse<RoyaltyStatementResponse> approve(@PathVariable UUID id) {
     return ApiResponse.ok(RoyaltyMapper.toResponse(service.approve(id)));
   }
 
   @PostMapping("/{id}/pay")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public ApiResponse<RoyaltyStatementResponse> pay(@PathVariable UUID id) {
     return ApiResponse.ok(RoyaltyMapper.toResponse(service.pay(id)));
   }

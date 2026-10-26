@@ -30,14 +30,14 @@ public class InviteController {
   }
 
   @GetMapping
-  @PreAuthorize("hasRole('ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_invites.manage')")
   public ApiResponse<List<InviteResponse>> pending() {
     return ApiResponse.ok(service.pending());
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasRole('ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_invites.manage')")
   public ApiResponse<InviteResponse> create(@Valid @RequestBody CreateInviteRequest req) {
     return ApiResponse.ok(service.create(req));
   }
@@ -50,7 +50,7 @@ public class InviteController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasRole('ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_invites.manage')")
   public void revoke(@PathVariable UUID id) {
     service.revoke(id);
   }

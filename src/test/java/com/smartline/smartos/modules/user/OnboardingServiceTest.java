@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.modules.organization.Organization;
@@ -61,7 +62,8 @@ class OnboardingServiceTest {
     when(users.findById(userId)).thenReturn(Optional.of(user));
     when(organizations.findById(orgId)).thenReturn(Optional.of(org));
     when(progress.findById(userId)).thenReturn(Optional.empty());
-    when(users.countByOrganization_Id(orgId)).thenReturn(1L);
+    // Only consulted for the admin-only "invite a teammate" step.
+    lenient().when(users.countByOrganization_Id(orgId)).thenReturn(1L);
   }
 
   @AfterEach
@@ -138,5 +140,75 @@ class OnboardingServiceTest {
 
     assertTrue(res.getItems().stream().filter(i -> i.getKey().equals("team"))
         .allMatch(OnboardingDtos.ChecklistItem::isCompleted));
+  }
+
+  @Test
+  void regularMemberSeesOnlyPersonalTasks() {
+    // A non-admin must not be shown organization branding, security
+    // configuration or teammate invitations they cannot perform.
+    user.setRole(Role.EDITOR);
+    authenticateAs(Role.EDITOR);
+
+    ChecklistResponse res = service.checklist();
+
+    assertEquals(2, res.getItems().size());
+    assertTrue(res.getItems().stream().map(OnboardingDtos.ChecklistItem::getKey)
+        .allMatch(k -> k.equals("profile") || k.equals("two-factor")));
+    assertTrue(res.getItems().stream().noneMatch(i -> i.getKey().equals("logo")));
+    assertTrue(res.getItems().stream().noneMatch(i -> i.getKey().equals("theme")));
+    assertTrue(res.getItems().stream().noneMatch(i -> i.getKey().equals("team")));
+  }
+
+  @Test
+  void memberTwoFactorIsOptionalButAdminTwoFactorIsRequired() {
+    user.setRole(Role.EDITOR);
+    authenticateAs(Role.EDITOR);
+
+    ChecklistResponse member = service.checklist();
+    assertTrue(member.getItems().stream().filter(i -> i.getKey().equals("two-factor"))
+        .allMatch(OnboardingDtos.ChecklistItem::isOptional));
+
+    user.setRole(Role.ORG_ADMIN);
+    authenticateAs(Role.ORG_ADMIN);
+    when(invites.findByOrganizationIdOrderByCreatedAtDesc(orgId)).thenReturn(List.of());
+
+    ChecklistResponse admin = service.checklist();
+    assertTrue(admin.getItems().stream().filter(i -> i.getKey().equals("two-factor"))
+        .noneMatch(OnboardingDtos.ChecklistItem::isOptional));
+  }
+
+  @Test
+  void progressCountsOnlyRequiredSteps() {
+    // Optional tasks must not affect the progress numerator or denominator.
+    org.setLogoUrl("https://cdn.acme.test/logo.png");
+    user.setAvatarUrl("https://cdn.acme.test/me.png");
+    user.setTotpEnabled(true);
+    when(users.countByOrganization_Id(orgId)).thenReturn(2L);
+
+    ChecklistResponse res = service.checklist();
+
+    long required = res.getItems().stream().filter(i -> !i.isOptional()).count();
+    long optional = res.getItems().stream().filter(OnboardingDtos.ChecklistItem::isOptional).count();
+    assertEquals(required, res.getRequiredTotal());
+    assertEquals(optional, res.getOptionalTotal());
+    assertEquals(res.getRequiredTotal(), res.getRequiredCompleted());
+    assertTrue(res.isComplete());
+  }
+
+  @Test
+  void checklistReflectsLiveRoleNotStaleToken() {
+    // The stored role is the source of truth: a user promoted to admin must
+    // see the admin tasks immediately, without needing a new token.
+    user.setRole(Role.ORG_ADMIN);
+    when(invites.findByOrganizationIdOrderByCreatedAtDesc(orgId)).thenReturn(List.of());
+
+    ChecklistResponse res = service.checklist();
+
+    assertTrue(res.getItems().stream().anyMatch(i -> i.getKey().equals("logo")));
+  }
+  private void authenticateAs(Role role) {
+    UserPrincipal principal = new UserPrincipal(userId, orgId, List.of(role.name()));
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
   }
 }

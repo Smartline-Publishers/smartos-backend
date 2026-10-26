@@ -46,34 +46,34 @@ public class ContractController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_royalties.read')")
   public ApiResponse<PageResponse<ContractResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
         service.list(Paging.capped(pageable)).map(this::withName)));
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_royalties.read')")
   public ApiResponse<ContractResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(withName(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public ApiResponse<ContractResponse> create(@Valid @RequestBody CreateContractRequest req) {
     return ApiResponse.ok(withName(service.create(req)));
   }
 
   @PostMapping("/{id}/terminate")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public ApiResponse<ContractResponse> terminate(@PathVariable UUID id) {
     return ApiResponse.ok(withName(service.terminate(id)));
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_royalties.write')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

@@ -6,10 +6,14 @@ import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.modules.user.UserDtos.ChangePasswordRequest;
 import com.smartline.smartos.modules.user.UserDtos.CreateUserRequest;
+import com.smartline.smartos.modules.user.UserDtos.PasswordChangeResponse;
 import com.smartline.smartos.modules.user.UserDtos.SessionResponse;
 import com.smartline.smartos.modules.user.UserDtos.UpdateProfileRequest;
 import com.smartline.smartos.modules.user.UserDtos.UpdateUserRequest;
+import com.smartline.smartos.security.JwtService;
+import com.smartline.smartos.security.PasswordPolicy;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.RolePermissions;
 import com.smartline.smartos.security.TokenHashes;
 import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
@@ -33,15 +37,20 @@ public class UserService {
   private final PasswordEncoder passwordEncoder;
   private final RefreshTokenRepository refreshTokens;
   private final com.smartline.smartos.media.MediaService media;
+  private final OnboardingProgressRepository onboardingProgress;
+  private final JwtService jwtService;
 
   public UserService(AppUserRepository users, OrganizationRepository organizations,
       PasswordEncoder passwordEncoder, RefreshTokenRepository refreshTokens,
-      com.smartline.smartos.media.MediaService media) {
+      com.smartline.smartos.media.MediaService media, OnboardingProgressRepository onboardingProgress,
+      JwtService jwtService) {
     this.users = users;
     this.organizations = organizations;
     this.passwordEncoder = passwordEncoder;
     this.refreshTokens = refreshTokens;
     this.media = media;
+    this.onboardingProgress = onboardingProgress;
+    this.jwtService = jwtService;
   }
 
   @Transactional
@@ -55,9 +64,7 @@ public class UserService {
           + org.getPlan().name());
     }
     Role role = req.getRole() != null ? req.getRole() : Role.VIEWER;
-    if (role == Role.PLATFORM_ADMIN && !callerIsPlatformAdmin()) {
-      throw ApiException.forbidden("Only platform admins can grant the platform admin role");
-    }
+    requireAssignableRole(role);
     String email = req.getEmail().trim().toLowerCase();
     if (users.existsByOrganization_IdAndEmail(orgId, email)) {
       throw ApiException.conflict("User email already exists in organization: " + email);
@@ -69,7 +76,15 @@ public class UserService {
     user.setFullName(req.getFullName().trim());
     user.setRole(role);
     user.setActive(true);
-    return users.save(user);
+    AppUser saved = users.save(user);
+    // Every new user gets their own independent onboarding checklist, linked to them
+    // alone and never shared with another user in the organization.
+    OnboardingProgress p = new OnboardingProgress();
+    p.setUserId(saved.getId());
+    p.setUser(saved);
+    p.setOrganization(org);
+    onboardingProgress.save(p);
+    return saved;
   }
 
   @Transactional(readOnly = true)
@@ -93,12 +108,20 @@ public class UserService {
       user.setFullName(req.getFullName().trim());
     }
     if (req.getRole() != null) {
-      if (req.getRole() == Role.PLATFORM_ADMIN && !callerIsPlatformAdmin()) {
-        throw ApiException.forbidden("Only platform admins can grant the platform admin role");
+      requireAssignableRole(req.getRole());
+      if (req.getRole() != user.getRole() && isSelf(id)
+          && !callerIsPlatformAdmin()) {
+        // An org admin changing their own role would strand the organization
+        // without an administrator; platform admins may still do so.
+        throw ApiException.forbidden(
+            "You cannot change your own role. Ask a platform administrator.");
       }
       user.setRole(req.getRole());
     }
     if (req.getActive() != null) {
+      if (!req.getActive() && isSelf(id) && !callerIsPlatformAdmin()) {
+        throw ApiException.forbidden("You cannot deactivate your own account");
+      }
       user.setActive(req.getActive());
     }
     if (req.getAvatarUrl() != null) {
@@ -139,17 +162,56 @@ public class UserService {
   }
 
   @Transactional
-  public void changePassword(ChangePasswordRequest req) {
+  public PasswordChangeResponse changePassword(ChangePasswordRequest req,
+      String currentRefreshToken) {
     AppUser user = me();
     if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPasswordHash())) {
       throw new ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED, "UNAUTHORIZED",
           "Current password is incorrect");
     }
+    if (req.getConfirmPassword() != null
+        && !req.getConfirmPassword().equals(req.getNewPassword())) {
+      throw ApiException.badRequest("The new passwords do not match");
+    }
+    PasswordPolicy.requireValid(req.getNewPassword(), user.getEmail());
     if (passwordEncoder.matches(req.getNewPassword(), user.getPasswordHash())) {
       throw ApiException.badRequest("New password must differ from the current password");
     }
+
+    Instant now = Instant.now();
     user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+    user.setLastPasswordChangeAt(now);
+    // Invalidate all access/refresh tokens minted before this change.
+    user.setAuthVersion(user.getAuthVersion() + 1);
     users.save(user);
+
+    String currentHash = currentRefreshToken != null && !currentRefreshToken.isBlank()
+        ? TokenHashes.sha256Hex(currentRefreshToken.trim())
+        : null;
+    List<RefreshToken> sessions = refreshTokens.findByUserId(user.getId());
+    boolean hasCurrent = currentHash != null
+        && sessions.stream().anyMatch(t -> !t.isRevoked() && currentHash.equals(t.getTokenHash()));
+    sessions.stream().filter(t -> !t.isRevoked()).forEach(t -> t.setRevoked(true));
+    refreshTokens.saveAll(sessions);
+
+    boolean keepCurrent = req.isKeepCurrentSession() && hasCurrent;
+    if (!keepCurrent) {
+      return new PasswordChangeResponse();
+    }
+
+    // The old token pair is dead (auth_version changed), so keeping this
+    // browser signed in means issuing a fresh pair carrying the new version.
+    List<String> roles = List.of(user.getRole().name());
+    String access = jwtService.generateAccessToken(user.getId(), user.getOrganization().getId(),
+        roles, user.getEmail(), user.getAuthVersion());
+    String rawRefresh = jwtService.generateRefreshToken(user.getId(),
+        user.getOrganization().getId(), user.getAuthVersion());
+    RefreshToken record = new RefreshToken();
+    record.setUser(user);
+    record.setTokenHash(TokenHashes.sha256Hex(rawRefresh));
+    record.setExpiresAt(Instant.now().plusMillis(jwtService.getRefreshExpiryMs()));
+    refreshTokens.save(record);
+    return new PasswordChangeResponse(access, rawRefresh);
   }
 
   @Transactional
@@ -191,6 +253,22 @@ public class UserService {
     refreshTokens.save(session);
   }
 
+  @Transactional
+  public void revokeOtherSessions(String currentRefreshToken) {
+    if (currentRefreshToken == null || currentRefreshToken.isBlank()) {
+      throw ApiException.badRequest("Current session token is required");
+    }
+    AppUser user = me();
+    String currentHash = TokenHashes.sha256Hex(currentRefreshToken.trim());
+    Instant now = Instant.now();
+    List<RefreshToken> others = refreshTokens.findByUserId(user.getId()).stream()
+        .filter(t -> !t.isRevoked() && t.getExpiresAt().isAfter(now))
+        .filter(t -> !currentHash.equals(t.getTokenHash()))
+        .toList();
+    others.forEach(t -> t.setRevoked(true));
+    refreshTokens.saveAll(others);
+  }
+
   static String validatedAvatarUrl(String raw) {
     String url = raw.trim();
     if (url.isEmpty()) {
@@ -220,6 +298,33 @@ public class UserService {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     return auth != null && auth.getPrincipal() instanceof UserPrincipal principal
         && principal.getRoles().contains(Role.PLATFORM_ADMIN.name());
+  }
+
+  /**
+   * Restricts which roles the caller may hand out.
+   *
+   * <p>A platform administrator may assign any role. An organization
+   * administrator may assign any organization-scoped role but never
+   * {@code PLATFORM_ADMIN}, which is a platform-wide privilege outside their
+   * own organization's remit.
+   */
+  private void requireAssignableRole(Role role) {
+    if (role == null) {
+      throw ApiException.badRequest("A role is required");
+    }
+    if (callerIsPlatformAdmin()) {
+      return;
+    }
+    if (!RolePermissions.isAssignableByOrgAdmin(role)) {
+      throw ApiException.forbidden("You cannot grant the " + role.name() + " role");
+    }
+  }
+
+  /** True when the given user is the caller making the request. */
+  private boolean isSelf(UUID id) {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getPrincipal() instanceof UserPrincipal principal
+        && principal.getUserId() != null && principal.getUserId().equals(id);
   }
 
   private UserPrincipal currentPrincipal() {

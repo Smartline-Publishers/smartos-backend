@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.smartline.smartos.modules.user.AppUserRepository;
 import com.smartline.smartos.security.JwtService;
 import java.time.Instant;
 import java.util.Map;
@@ -33,6 +34,8 @@ class JacksonContractTest {
 
   // Satisfies the JwtAuthenticationFilter @Component in the slice.
   @MockitoBean private JwtService jwtService;
+  // The filter resolves the caller's live role from the user record.
+  @MockitoBean private AppUserRepository appUserRepository;
 
   @RestController
   static class ProbeController {

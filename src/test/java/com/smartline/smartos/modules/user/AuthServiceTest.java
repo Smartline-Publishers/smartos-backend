@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.common.exception.ApiException;
@@ -11,6 +12,7 @@ import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.security.AuthDtos.LoginRequest;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
+import com.smartline.smartos.security.AuthRateLimiter;
 import com.smartline.smartos.security.JwtService;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.TokenHashes;
@@ -37,13 +39,15 @@ class AuthServiceTest {
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
   @Mock private TwoFactorService twoFactor;
+  @Mock private AuthRateLimiter rateLimiter;
 
   private AuthService service;
 
   @BeforeEach
   void setUp() {
     service = new AuthService(users, organizations, refreshTokens, passwordEncoder, jwtService,
-        twoFactor);
+        twoFactor, rateLimiter);
+    lenient().when(rateLimiter.loginAllowed(any(), any())).thenReturn(true);
   }
 
   @Test
@@ -53,9 +57,10 @@ class AuthServiceTest {
     when(users.findByEmailIgnoreCase("admin@acme.test")).thenReturn(List.of(user));
     when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
     when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN")),
-        eq("admin@acme.test")))
+        eq("admin@acme.test"), eq(0)))
         .thenReturn("access");
-    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()))).thenReturn("refresh");
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()), eq(0)))
+        .thenReturn("refresh");
 
     TokenResponse tokens = service.login(new LoginRequest("admin@acme.test", "secret123", null));
 
@@ -64,17 +69,40 @@ class AuthServiceTest {
   }
 
   @Test
-  void loginWithEmailInMultipleOrgsRequiresOrganizationId() {
+  void loginWithSamePasswordInMultipleOrgsRequiresOrganizationId() {
     Organization orgA = org();
     Organization orgB = org();
-    when(users.findByEmailIgnoreCase("shared@test.example"))
-        .thenReturn(List.of(user(orgA, "shared@test.example"), user(orgB, "shared@test.example")));
+    AppUser a = user(orgA, "shared@test.example");
+    AppUser b = user(orgB, "shared@test.example");
+    when(users.findByEmailIgnoreCase("shared@test.example")).thenReturn(List.of(a, b));
+    when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
 
     ApiException ex = assertThrows(ApiException.class,
         () -> service.login(new LoginRequest("shared@test.example", "secret123", null)));
 
     assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
     assertEquals("AMBIGUOUS_TENANT", ex.getCode());
+  }
+
+  @Test
+  void loginWithEmailInMultipleOrgsResolvesByPassword() {
+    Organization orgA = org();
+    Organization orgB = org();
+    AppUser a = user(orgA, "shared@test.example");
+    AppUser b = user(orgB, "shared@test.example");
+    b.setPasswordHash("other-hash");
+    when(users.findByEmailIgnoreCase("shared@test.example")).thenReturn(List.of(a, b));
+    when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
+    when(passwordEncoder.matches("secret123", "other-hash")).thenReturn(false);
+    when(jwtService.generateAccessToken(eq(a.getId()), eq(orgA.getId()), eq(List.of("ORG_ADMIN")),
+        eq("shared@test.example"), eq(0))).thenReturn("access");
+    when(jwtService.generateRefreshToken(eq(a.getId()), eq(orgA.getId()), eq(0)))
+        .thenReturn("refresh");
+
+    TokenResponse tokens = service.login(new LoginRequest("shared@test.example", "secret123", null));
+
+    assertEquals("access", tokens.getAccessToken());
+    assertEquals("refresh", tokens.getRefreshToken());
   }
 
   @Test
@@ -96,12 +124,12 @@ class AuthServiceTest {
     when(users.findByEmailIgnoreCase("admin@acme.test")).thenReturn(List.of(user));
     when(passwordEncoder.matches("secret123", "hash")).thenReturn(true);
     when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()), eq(List.of("ORG_ADMIN")),
-        eq("admin@acme.test")))
+        eq("admin@acme.test"), eq(0)))
         .thenReturn("access");
     // The login flow now uses storeRefreshWithRetry which handles retries internally.
     // We just need to verify that save is called twice (first fails, second succeeds)
     // and that the final refresh token is returned.
-    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId())))
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()), eq(0)))
         .thenReturn("refresh-1", "refresh-2");
     RefreshToken existing = new RefreshToken();
     existing.setId(UUID.randomUUID());
@@ -131,8 +159,8 @@ class AuthServiceTest {
         .thenReturn(Optional.of(stored));
     when(jwtService.extractOrgId(claims)).thenReturn(org.getId());
     when(jwtService.generateAccessToken(eq(user.getId()), eq(org.getId()),
-        eq(List.of("ORG_ADMIN")), eq("admin@acme.test"))).thenReturn("access-2");
-    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId())))
+        eq(List.of("ORG_ADMIN")), eq("admin@acme.test"), eq(0))).thenReturn("access-2");
+    when(jwtService.generateRefreshToken(eq(user.getId()), eq(org.getId()), eq(0)))
         .thenReturn("refresh-2");
     when(refreshTokens.save(any(RefreshToken.class))).thenAnswer(inv -> {
       RefreshToken r = inv.getArgument(0);

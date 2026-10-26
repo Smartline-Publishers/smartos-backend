@@ -44,7 +44,7 @@ public class ProductionJobController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_production.read')")
   public ApiResponse<PageResponse<JobResponse>> list(
       @RequestParam(required = false) JobStatus status,
       @RequestParam(required = false) UUID bookId,
@@ -54,46 +54,46 @@ public class ProductionJobController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_production.read')")
   public ApiResponse<JobResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(withRuns(service.getJob(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<JobResponse> create(@Valid @RequestBody CreateJobRequest req) {
     return ApiResponse.ok(withRuns(service.createJob(req)));
   }
 
   @PostMapping("/{id}/start")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<JobResponse> start(@PathVariable UUID id) {
     return ApiResponse.ok(withRuns(service.startJob(id)));
   }
 
   @PostMapping("/{id}/complete")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<JobResponse> complete(@PathVariable UUID id) {
     return ApiResponse.ok(withRuns(service.completeJob(id)));
   }
 
   @PostMapping("/{id}/cancel")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<JobResponse> cancel(@PathVariable UUID id) {
     return ApiResponse.ok(withRuns(service.cancelJob(id)));
   }
 
   @PostMapping("/{id}/runs")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<PrintRunResponse> createRun(@PathVariable UUID id,
       @Valid @RequestBody CreateRunRequest req) {
     return ApiResponse.ok(ProductionMapper.toResponse(service.createRun(id, req)));
   }
 
   @PostMapping("/runs/{runId}/post")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public ApiResponse<PrintRunResponse> postRun(@PathVariable UUID runId,
       @Valid @RequestBody PostRunRequest req) {
     return ApiResponse.ok(ProductionMapper.toResponse(service.postRun(runId, req.getWarehouseId())));
@@ -101,14 +101,14 @@ public class ProductionJobController {
 
   @DeleteMapping("/runs/{runId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public void deleteRun(@PathVariable UUID runId) {
     service.deleteRun(runId);
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PRODUCTION')")
+  @PreAuthorize("hasAuthority('PERM_production.write')")
   public void delete(@PathVariable UUID id) {
     service.deleteJob(id);
   }

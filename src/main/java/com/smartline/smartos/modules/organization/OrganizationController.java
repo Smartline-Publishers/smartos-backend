@@ -34,20 +34,20 @@ public class OrganizationController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public ApiResponse<List<OrganizationResponse>> list() {
     return ApiResponse.ok(service.list().stream().map(OrganizationResponse::from).toList());
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public ApiResponse<OrganizationResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(OrganizationResponse.from(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('PLATFORM_ADMIN','ORG_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public ApiResponse<OrganizationResponse> create(@Valid @RequestBody CreateOrganizationRequest req) {
     return ApiResponse.ok(OrganizationResponse.from(service.create(req.getName(), req.getSlug())));
   }
@@ -59,7 +59,7 @@ public class OrganizationController {
   }
 
   @PatchMapping("/current")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public ApiResponse<OrganizationResponse> updateCurrent(
       @RequestBody OrganizationDtos.UpdateOrganizationRequest req) {
     return ApiResponse.ok(OrganizationResponse.from(service.updateCurrent(req)));
@@ -67,20 +67,20 @@ public class OrganizationController {
 
   @DeleteMapping("/current/theme")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public void clearTheme() {
     service.clearTheme();
   }
 
   @PostMapping(value = "/current/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.settings.write')")
   public ApiResponse<OrganizationResponse> uploadLogo(@RequestParam("file") MultipartFile file) {
     return ApiResponse.ok(OrganizationResponse.from(service.uploadLogo(file)));
   }
 
   @PatchMapping("/{id}/plan")
-  @PreAuthorize("hasRole('PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_org.plan.write')")
   public ApiResponse<OrganizationResponse> changePlan(@PathVariable UUID id,
       @Valid @RequestBody ChangePlanRequest req) {
     return ApiResponse.ok(OrganizationResponse.from(service.changePlan(id, req.getPlan())));

@@ -3,6 +3,7 @@ package com.smartline.smartos.security;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.UUID;
 
 public final class AuthDtos {
@@ -213,6 +214,103 @@ public final class AuthDtos {
 
     public void setAdminFullName(String adminFullName) {
       this.adminFullName = adminFullName;
+    }
+  }
+
+  /**
+   * The caller's effective access: their live role, the permissions that role
+   * carries, and the roles they are allowed to assign to other users.
+   *
+   * <p>The web app renders navigation, dashboard widgets and actions from this
+   * payload, so the UI and the API always agree on what a role may do.
+   */
+  public static class SessionInfo {
+    private UUID userId;
+    private UUID organizationId;
+    private String email;
+    private String fullName;
+    private Role role;
+    private List<String> roles;
+    private List<String> permissions;
+    private List<Role> assignableRoles;
+
+    public SessionInfo() {
+    }
+
+    public SessionInfo(UUID userId, UUID organizationId, String email, String fullName, Role role,
+        List<String> roles, List<String> permissions, List<Role> assignableRoles) {
+      this.userId = userId;
+      this.organizationId = organizationId;
+      this.email = email;
+      this.fullName = fullName;
+      this.role = role;
+      this.roles = roles;
+      this.permissions = permissions;
+      this.assignableRoles = assignableRoles;
+    }
+
+    public UUID getUserId() {
+      return userId;
+    }
+
+    public void setUserId(UUID userId) {
+      this.userId = userId;
+    }
+
+    public UUID getOrganizationId() {
+      return organizationId;
+    }
+
+    public void setOrganizationId(UUID organizationId) {
+      this.organizationId = organizationId;
+    }
+
+    public String getEmail() {
+      return email;
+    }
+
+    public void setEmail(String email) {
+      this.email = email;
+    }
+
+    public String getFullName() {
+      return fullName;
+    }
+
+    public void setFullName(String fullName) {
+      this.fullName = fullName;
+    }
+
+    public Role getRole() {
+      return role;
+    }
+
+    public void setRole(Role role) {
+      this.role = role;
+    }
+
+    public List<String> getRoles() {
+      return roles;
+    }
+
+    public void setRoles(List<String> roles) {
+      this.roles = roles;
+    }
+
+    public List<String> getPermissions() {
+      return permissions;
+    }
+
+    public void setPermissions(List<String> permissions) {
+      this.permissions = permissions;
+    }
+
+    public List<Role> getAssignableRoles() {
+      return assignableRoles;
+    }
+
+    public void setAssignableRoles(List<Role> assignableRoles) {
+      this.assignableRoles = assignableRoles;
     }
   }
 }

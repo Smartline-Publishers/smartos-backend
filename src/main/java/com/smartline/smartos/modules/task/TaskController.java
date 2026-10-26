@@ -35,7 +35,7 @@ public class TaskController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_tasks.read')")
   public ApiResponse<PageResponse<TaskResponse>> list(
       @RequestParam(required = false) TaskStatus status,
       @RequestParam(required = false) String search,
@@ -46,20 +46,20 @@ public class TaskController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_tasks.read')")
   public ApiResponse<TaskResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(TaskMapper.toResponse(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_tasks.write')")
   public ApiResponse<TaskResponse> create(@Valid @RequestBody CreateTaskRequest req) {
     return ApiResponse.ok(TaskMapper.toResponse(service.create(req)));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_tasks.write')")
   public ApiResponse<TaskResponse> update(@PathVariable UUID id,
       @RequestBody UpdateTaskRequest req) {
     return ApiResponse.ok(TaskMapper.toResponse(service.update(id, req)));
@@ -67,7 +67,7 @@ public class TaskController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_tasks.write')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

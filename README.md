@@ -8,6 +8,7 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 
 - Java 21 bytecode (runs on JDK 21+; verified on JDK 25), Maven wrapper (`mvnw` / `mvnw.cmd` — no local Maven needed)
 - Spring Boot 4.1: Web, Data JPA, Security + JJWT, Validation, AOP (audit), Flyway, PostgreSQL driver, Springdoc OpenAPI
+- Spring Mail (optional password-reset email) and server-verified WebAuthn/FIDO2 passkeys
 - Tests: JUnit 5 + Mockito (`src/test`)
 
 ## Prerequisites
@@ -56,7 +57,7 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 ./                          # this repo
 ├── docker-compose.yml      # local Postgres + pgAdmin
 ├── .env                    # local only, never committed (see Prerequisites)
-├── docs/                   # ARCHITECTURE, DATABASE, API_CONVENTIONS, ROADMAP, ADR-001
+├── docs/                   # ARCHITECTURE, DATABASE, API_CONVENTIONS, AUTHENTICATION, ROADMAP, ADR-001
 ├── mvnw / mvnw.cmd         # Maven wrapper (downloads Maven on first use)
 ├── run-local.ps1           # loads .env, validates, starts the API
 ├── pom.xml
@@ -69,7 +70,7 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
     │   └── modules/        # organization, user, book, manuscript, task,
     │                       # production, inventory, sales, finance, billing,
     │                       # audit, reporting, dashboard
-    ├── main/resources/     # application.yml, db/migration/V1-V10
+    ├── main/resources/     # application.yml, db/migration/V1-V12
     └── test/               # service, tenant-isolation, web-slice, contract tests
 ```
 
@@ -83,8 +84,31 @@ First org + admin: `POST /api/v1/auth/register-organization`, then `POST /api/v1
 | `DB_USER` / `DB_PASSWORD` | datasource credentials | `postgres/postgres` (override in `.env`) |
 | `JWT_SECRET` | token signing — standard Base64, URL-safe Base64, or a raw passphrase of ≥32 bytes; generate with `openssl rand -base64 48` | dev-only placeholder — must override (export `JWT_SECRET` in your shell; never commit it) |
 | `CORS_ORIGINS` | allowed web origins | `http://localhost:3000` |
+| `APP_FRONTEND_URL` | public web origin used in password-reset links | `http://localhost:3000` |
+| `MAIL_ENABLED` + `SPRING_MAIL_*` | optional SMTP delivery for reset emails | disabled/empty |
+| `PASSWORD_RESET_EXPOSE_DEV_TOKEN` | dev-only: return the reset token in the API response | `false` |
+| `TRUST_FORWARDED_HEADERS` | use `X-Forwarded-For` behind a trusted proxy | `false` |
+| `WEBAUTHN_RP_ID` / `WEBAUTHN_ALLOWED_ORIGINS` | passkey RP ID and exact allowed origins | `localhost` / `http://localhost:3000` |
+| `WEBAUTHN_RP_NAME` / `WEBAUTHN_USER_VERIFICATION` | authenticator display name / `preferred` or `required` | `SmartOS` / `preferred` |
 
 Never commit `.env`. `ddl-auto` is `validate`: schema changes go through `src/main/resources/db/migration/V<seq>__<name>.sql` (forward-only).
+
+## Authentication, password recovery and passkeys
+
+See [`docs/AUTHENTICATION.md`](docs/AUTHENTICATION.md) for the full flow,
+security properties, SMTP/WebAuthn setup, migration notes and deployment
+checklist. In short:
+
+- `POST /api/v1/auth/password/forgot`, `/password/reset/validate` and
+  `/password/reset` are public and rate limited; reset tokens are hashed,
+  single-use and expire after 30 minutes.
+- `POST /api/v1/users/me/password` verifies the current password and revokes
+  every other session (optionally keeping the current one).
+- Passkeys are registered/managed under `/users/me/passkeys` and used to sign in
+  via `/auth/passkeys/options` + `/auth/passkeys/verify`; all challenges,
+  origins, RP IDs, flags and signatures are verified server-side.
+- Production requires HTTPS and a real `WEBAUTHN_RP_ID`; `localhost` is the only
+  permitted insecure origin.
 
 ## Secret rotation
 

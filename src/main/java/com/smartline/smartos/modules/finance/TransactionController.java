@@ -30,7 +30,7 @@ public class TransactionController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_finance.read')")
   public ApiResponse<PageResponse<TransactionResponse>> list(
       @RequestParam(required = false) TransactionType type,
       @RequestParam(required = false) String category,
@@ -41,7 +41,7 @@ public class TransactionController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_finance.write')")
   public ApiResponse<TransactionResponse> record(@Valid @RequestBody CreateTransactionRequest req) {
     return ApiResponse.ok(FinanceMapper.toResponse(service.recordManual(req)));
   }

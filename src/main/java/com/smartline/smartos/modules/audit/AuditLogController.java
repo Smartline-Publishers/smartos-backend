@@ -28,7 +28,7 @@ public class AuditLogController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_audit.read')")
   public ApiResponse<PageResponse<AuditLogResponse>> list(Pageable pageable) {
     UUID orgId = TenantContext.require();
     Map<UUID, String> names = new HashMap<>();

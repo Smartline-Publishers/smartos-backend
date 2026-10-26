@@ -27,6 +27,8 @@ import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskRepository;
 import com.smartline.smartos.modules.user.AppUser;
 import com.smartline.smartos.modules.user.AppUserRepository;
+import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -41,6 +43,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class DashboardServiceTest {
@@ -56,23 +60,30 @@ class DashboardServiceTest {
 
   private DashboardService service;
   private UUID orgId;
+  private UUID userId;
   private Organization org;
+  private UserPrincipal principal;
 
   @BeforeEach
   void setUp() {
     service = new DashboardService(books, contributors, manuscripts, tasks, statements,
         auditLogs, users, inventory);
     orgId = UUID.randomUUID();
+    userId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
     org = new Organization();
     org.setId(orgId);
     org.setName("Acme");
     org.setSlug("acme");
+    principal = new UserPrincipal(userId, orgId, List.of(Role.ORG_ADMIN.name()));
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
   }
 
   @AfterEach
   void tearDown() {
     TenantContext.clear();
+    SecurityContextHolder.clearContext();
   }
 
   @Test
@@ -123,7 +134,7 @@ class DashboardServiceTest {
         .thenReturn(List.of(log));
     when(users.findAllById(any())).thenReturn(List.of(actor));
 
-    DashboardSummary summary = service.summary();
+    DashboardSummary summary = service.summary(principal);
 
     assertEquals(2, summary.getTotalBooks());
     assertEquals(1, summary.getPublishedBooks());

@@ -36,7 +36,7 @@ public class BookController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_books.read')")
   public ApiResponse<PageResponse<BookResponse>> list(
       @RequestParam(required = false) BookStatus status,
       @RequestParam(required = false) String search,
@@ -46,7 +46,7 @@ public class BookController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_books.read')")
   public ApiResponse<BookResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(
         BookDtos.BookMapper.toResponse(service.get(id), service.links(id)));
@@ -54,13 +54,13 @@ public class BookController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR','AUTHOR')")
+  @PreAuthorize("hasAuthority('PERM_books.write')")
   public ApiResponse<BookResponse> create(@Valid @RequestBody CreateBookRequest req) {
     return ApiResponse.ok(BookDtos.BookMapper.toResponse(service.create(req)));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR','AUTHOR')")
+  @PreAuthorize("hasAuthority('PERM_books.write')")
   public ApiResponse<BookResponse> update(@PathVariable UUID id,
       @RequestBody UpdateBookRequest req) {
     return ApiResponse.ok(BookDtos.BookMapper.toResponse(service.update(id, req)));
@@ -68,14 +68,14 @@ public class BookController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_books.delete')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }
 
   @PostMapping("/{id}/contributors")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_books.write')")
   public ApiResponse<BookLinkResponse> linkContributor(@PathVariable UUID id,
       @Valid @RequestBody LinkContributorRequest req) {
     return ApiResponse.ok(service.linkContributor(id, req));
@@ -83,7 +83,7 @@ public class BookController {
 
   @DeleteMapping("/{id}/contributors/{contributorId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_books.write')")
   public void unlinkContributor(@PathVariable UUID id, @PathVariable UUID contributorId) {
     service.unlinkContributor(id, contributorId);
   }

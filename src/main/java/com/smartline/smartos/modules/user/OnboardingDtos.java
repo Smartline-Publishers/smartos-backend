@@ -81,14 +81,24 @@ public final class OnboardingDtos {
     private List<ChecklistItem> items;
     private boolean complete;
     private boolean dismissed;
+    /** Required steps already satisfied — the numerator of the progress bar. */
+    private int requiredCompleted;
+    /** Total required steps for this user — the denominator of the progress bar. */
+    private int requiredTotal;
+    /** Optional steps shown for this user; they never block completion. */
+    private int optionalTotal;
 
     public ChecklistResponse() {
     }
 
-    public ChecklistResponse(List<ChecklistItem> items, boolean complete, boolean dismissed) {
+    public ChecklistResponse(List<ChecklistItem> items, boolean complete, boolean dismissed,
+        int requiredCompleted, int requiredTotal, int optionalTotal) {
       this.items = items;
       this.complete = complete;
       this.dismissed = dismissed;
+      this.requiredCompleted = requiredCompleted;
+      this.requiredTotal = requiredTotal;
+      this.optionalTotal = optionalTotal;
     }
 
     public List<ChecklistItem> getItems() {
@@ -113,6 +123,30 @@ public final class OnboardingDtos {
 
     public void setDismissed(boolean dismissed) {
       this.dismissed = dismissed;
+    }
+
+    public int getRequiredCompleted() {
+      return requiredCompleted;
+    }
+
+    public void setRequiredCompleted(int requiredCompleted) {
+      this.requiredCompleted = requiredCompleted;
+    }
+
+    public int getRequiredTotal() {
+      return requiredTotal;
+    }
+
+    public void setRequiredTotal(int requiredTotal) {
+      this.requiredTotal = requiredTotal;
+    }
+
+    public int getOptionalTotal() {
+      return optionalTotal;
+    }
+
+    public void setOptionalTotal(int optionalTotal) {
+      this.optionalTotal = optionalTotal;
     }
   }
 

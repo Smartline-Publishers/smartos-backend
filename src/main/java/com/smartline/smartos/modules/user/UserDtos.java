@@ -145,7 +145,15 @@ public final class UserDtos {
 
   public static class ChangePasswordRequest {
     @NotBlank private String currentPassword;
-    @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") private String newPassword;
+    @NotBlank @Size(min = 10, message = "Password must be at least 10 characters")
+    private String newPassword;
+    /** Optional client-side confirmation; when present it must match. */
+    private String confirmPassword;
+    /**
+     * Keep the browser that made the change signed in by issuing a fresh
+     * token pair. Every other refresh token is revoked either way.
+     */
+    private boolean keepCurrentSession = true;
 
     public ChangePasswordRequest() {
     }
@@ -164,6 +172,52 @@ public final class UserDtos {
 
     public void setNewPassword(String newPassword) {
       this.newPassword = newPassword;
+    }
+
+    public String getConfirmPassword() {
+      return confirmPassword;
+    }
+
+    public void setConfirmPassword(String confirmPassword) {
+      this.confirmPassword = confirmPassword;
+    }
+
+    public boolean isKeepCurrentSession() {
+      return keepCurrentSession;
+    }
+
+    public void setKeepCurrentSession(boolean keepCurrentSession) {
+      this.keepCurrentSession = keepCurrentSession;
+    }
+  }
+
+  /** Fresh tokens returned when the caller chose to keep the current session. */
+  public static class PasswordChangeResponse {
+    private String accessToken;
+    private String refreshToken;
+
+    public PasswordChangeResponse() {
+    }
+
+    public PasswordChangeResponse(String accessToken, String refreshToken) {
+      this.accessToken = accessToken;
+      this.refreshToken = refreshToken;
+    }
+
+    public String getAccessToken() {
+      return accessToken;
+    }
+
+    public void setAccessToken(String accessToken) {
+      this.accessToken = accessToken;
+    }
+
+    public String getRefreshToken() {
+      return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+      this.refreshToken = refreshToken;
     }
   }
 

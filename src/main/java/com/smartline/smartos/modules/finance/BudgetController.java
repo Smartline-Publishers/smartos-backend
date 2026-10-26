@@ -32,28 +32,28 @@ public class BudgetController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_finance.read')")
   public ApiResponse<PageResponse<BudgetResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
         service.list(Paging.capped(pageable)).map(b -> service.withActuals(b.getId()))));
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_finance.read')")
   public ApiResponse<BudgetResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(service.withActuals(id));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_finance.write')")
   public ApiResponse<BudgetResponse> create(@Valid @RequestBody CreateBudgetRequest req) {
     Budget created = service.create(req);
     return ApiResponse.ok(service.withActuals(created.getId()));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_finance.write')")
   public ApiResponse<BudgetResponse> update(@PathVariable UUID id,
       @RequestBody UpdateBudgetRequest req) {
     Budget updated = service.update(id, req);
@@ -62,7 +62,7 @@ public class BudgetController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','FINANCE')")
+  @PreAuthorize("hasAuthority('PERM_finance.write')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

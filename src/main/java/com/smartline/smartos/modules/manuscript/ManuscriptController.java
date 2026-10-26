@@ -37,7 +37,7 @@ public class ManuscriptController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.read')")
   public ApiResponse<PageResponse<ManuscriptResponse>> list(
       @RequestParam(required = false) ManuscriptStage stage,
       @RequestParam(required = false) String search,
@@ -48,7 +48,7 @@ public class ManuscriptController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.read')")
   public ApiResponse<ManuscriptResponse> get(@PathVariable UUID id) {
     Manuscript manuscript = service.get(id);
     return ApiResponse.ok(
@@ -57,20 +57,20 @@ public class ManuscriptController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR','AUTHOR')")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.write')")
   public ApiResponse<ManuscriptResponse> create(@Valid @RequestBody CreateManuscriptRequest req) {
     return ApiResponse.ok(ManuscriptMapper.toResponse(service.create(req), List.of()));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR','AUTHOR')")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.write')")
   public ApiResponse<ManuscriptResponse> update(@PathVariable UUID id,
       @RequestBody UpdateManuscriptRequest req) {
     return ApiResponse.ok(ManuscriptMapper.toResponse(service.update(id, req), List.of()));
   }
 
   @PostMapping("/{id}/transitions")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.write')")
   public ApiResponse<ManuscriptResponse> transition(@PathVariable UUID id,
       @Valid @RequestBody TransitionManuscriptRequest req) {
     Manuscript manuscript = service.transition(id, req.getToStage(), req.getComment());
@@ -80,7 +80,7 @@ public class ManuscriptController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','EDITOR')")
+  @PreAuthorize("hasAuthority('PERM_manuscripts.delete')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

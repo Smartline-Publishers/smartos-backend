@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.1</version>
+    <version>4.1.2</version>
     <relativePath/>
   </parent>
 
@@ -44,6 +44,13 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <!-- Transactional email (password reset). The JavaMailSender bean is only
+         created when spring.mail.host is configured; the application treats
+         mail as optional and never logs reset secrets. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
     </dependency>
     <!-- Boot 4 removed spring-boot-starter-aop: depend on its two halves
          directly (both versions managed). Powers the @Audited aspect. -->

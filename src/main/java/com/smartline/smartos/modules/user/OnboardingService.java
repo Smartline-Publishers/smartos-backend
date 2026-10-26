@@ -7,6 +7,7 @@ import com.smartline.smartos.modules.organization.OrgTheme;
 import com.smartline.smartos.modules.user.OnboardingDtos.ChecklistItem;
 import com.smartline.smartos.modules.user.OnboardingDtos.ChecklistResponse;
 import com.smartline.smartos.modules.user.OnboardingDtos.UpdateOnboardingRequest;
+import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.UserPrincipal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,40 +40,80 @@ public class OnboardingService {
     this.progress = progress;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public ChecklistResponse checklist() {
     UserPrincipal principal = currentPrincipal();
     AppUser user = users.findById(principal.getUserId())
         .orElseThrow(() -> ApiException.notFound("User", principal.getUserId()));
     Organization org = organizations.findById(principal.getOrgId())
         .orElseThrow(() -> ApiException.notFound("Organization", principal.getOrgId()));
-    OnboardingProgress saved = progress.findById(user.getId()).orElse(null);
-    boolean themeSkipped = saved != null && saved.isThemeSkipped();
-    boolean dismissed = saved != null && saved.isDismissed();
+    OnboardingProgress saved = ensureProgress(user, org);
+
+    // The persisted role is the source of truth: a role changed by an admin
+    // takes effect immediately, not when the user's token next refreshes.
+    Role role = user.getRole();
+    boolean orgAdmin = role == Role.ORG_ADMIN || role == Role.PLATFORM_ADMIN;
 
     List<ChecklistItem> items = new ArrayList<>();
-    items.add(new ChecklistItem("logo", "Add an organization logo",
-        "Upload a logo so your press is recognizable across the app.",
-        org.getLogoUrl() != null && !org.getLogoUrl().isBlank(), false,
-        "/settings?section=organization"));
-    items.add(new ChecklistItem("profile", "Set up your profile",
-        "Add your name and a profile picture.",
-        user.getFullName() != null && !user.getFullName().isBlank()
-            && user.getAvatarUrl() != null && !user.getAvatarUrl().isBlank(),
-        false, "/settings?section=profile"));
-    boolean themeDone = !OrgTheme.isBlank(org.getTheme()) || themeSkipped;
-    items.add(new ChecklistItem("theme", "Configure the organization theme",
-        "Brand colors for light and dark mode. Optional — the default theme applies until set.",
-        themeDone, true, "/settings?section=appearance"));
-    items.add(new ChecklistItem("two-factor", "Set up two-factor authentication",
-        "Protect the administrator account with an authenticator app.",
-        user.isTotpEnabled(), false, "/settings?section=security"));
-    items.add(new ChecklistItem("team", "Invite a teammate",
-        "Bring at least one more person into the organization.",
-        teamStarted(org.getId()), true, "/users"));
 
-    boolean complete = items.stream().filter(i -> !i.isOptional()).allMatch(ChecklistItem::isCompleted);
-    return new ChecklistResponse(items, complete, dismissed);
+    // --- Personal tasks: every role can complete these. ---
+    // The profile is required for everyone: it is how colleagues recognise you.
+    items.add(new ChecklistItem("profile", "Set up your profile",
+        "Add a profile picture so teammates can recognise you.",
+        profileComplete(user), false, "/settings?section=profile"));
+    // Two-factor is required for administrators, whose accounts carry the
+    // organization's administrative reach; for everyone else it is strongly
+    // recommended but must not hold up setup.
+    items.add(new ChecklistItem("two-factor", "Set up two-factor authentication",
+        orgAdmin
+            ? "Required for your administrator account — protect it with an authenticator app."
+            : "Protect your account with an authenticator app.",
+        user.isTotpEnabled(), !orgAdmin, "/settings?section=security"));
+
+    // --- Organization tasks: only for roles that can actually perform them. ---
+    if (orgAdmin) {
+      items.add(new ChecklistItem("logo", "Add an organization logo",
+          "Upload a logo so your press is recognizable across the app.",
+          org.getLogoUrl() != null && !org.getLogoUrl().isBlank(), true,
+          "/settings?section=organization"));
+      boolean themeDone = !OrgTheme.isBlank(org.getTheme()) || saved.isThemeSkipped();
+      items.add(new ChecklistItem("theme", "Configure the organization theme",
+          "Brand colors for light and dark mode. Optional — the default theme applies until set.",
+          themeDone, true, "/settings?section=organization"));
+
+      long memberCount = users.countByOrganization_Id(org.getId());
+      // Only offer to invite when the plan still has room: a task that can
+      // never be performed and never be completed is noise, not guidance.
+      if (memberCount < org.getPlan().getMaxUsers()) {
+        items.add(new ChecklistItem("team", "Invite a teammate",
+            "Bring at least one more person into the organization.",
+            teamStarted(org.getId(), memberCount), true, "/users"));
+      }
+    }
+
+    int requiredTotal = 0;
+    int requiredCompleted = 0;
+    int optionalTotal = 0;
+    for (ChecklistItem item : items) {
+      if (item.isOptional()) {
+        optionalTotal++;
+      } else {
+        requiredTotal++;
+        if (item.isCompleted()) {
+          requiredCompleted++;
+        }
+      }
+    }
+    // Optional tasks never block completion.
+    boolean complete = requiredTotal == 0 || requiredCompleted == requiredTotal;
+    return new ChecklistResponse(items, complete, saved.isDismissed(),
+        requiredCompleted, requiredTotal, optionalTotal);
+  }
+
+  /** A profile is complete once it has both a name and a picture. */
+  private boolean profileComplete(AppUser user) {
+    return user.getFullName() != null && !user.getFullName().isBlank()
+        && user.getAvatarUrl() != null && !user.getAvatarUrl().isBlank();
   }
 
   @Transactional
@@ -80,15 +121,9 @@ public class OnboardingService {
     UserPrincipal principal = currentPrincipal();
     AppUser user = users.findById(principal.getUserId())
         .orElseThrow(() -> ApiException.notFound("User", principal.getUserId()));
-    OnboardingProgress saved = progress.findById(user.getId()).orElseGet(() -> {
-      OnboardingProgress p = new OnboardingProgress();
-      p.setUserId(user.getId());
-      p.setUser(user);
-      Organization org = organizations.findById(principal.getOrgId())
-          .orElseThrow(() -> ApiException.notFound("Organization", principal.getOrgId()));
-      p.setOrganization(org);
-      return p;
-    });
+    Organization org = organizations.findById(principal.getOrgId())
+        .orElseThrow(() -> ApiException.notFound("Organization", principal.getOrgId()));
+    OnboardingProgress saved = ensureProgress(user, org);
     if (req.getThemeSkipped() != null) {
       saved.setThemeSkipped(req.getThemeSkipped());
     }
@@ -99,8 +134,28 @@ public class OnboardingService {
     return checklist();
   }
 
-  private boolean teamStarted(UUID orgId) {
-    if (users.countByOrganization_Id(orgId) > 1) {
+  /**
+   * Ensures an {@link OnboardingProgress} row exists for the given user, creating one
+   * with defaults when it is missing. Every user gets their own independent checklist;
+   * existing users who were created before this existed receive one on first access.
+   */
+  private OnboardingProgress ensureProgress(AppUser user, Organization org) {
+    return progress.findById(user.getId()).orElseGet(() -> {
+      OnboardingProgress p = new OnboardingProgress();
+      p.setUserId(user.getId());
+      p.setUser(user);
+      p.setOrganization(org);
+      progress.save(p);
+      return p;
+    });
+  }
+
+  /**
+   * A team exists once the organization has more than one member, or once an
+   * invitation is outstanding.
+   */
+  private boolean teamStarted(UUID orgId, long memberCount) {
+    if (memberCount > 1) {
       return true;
     }
     Instant now = Instant.now();

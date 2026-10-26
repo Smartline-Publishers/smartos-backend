@@ -41,6 +41,7 @@ class InviteServiceTest {
   @Mock private RefreshTokenRepository refreshTokens;
   @Mock private PasswordEncoder passwordEncoder;
   @Mock private JwtService jwtService;
+  @Mock private OnboardingProgressRepository onboardingProgress;
 
   private InviteService service;
   private UUID orgId;
@@ -49,7 +50,7 @@ class InviteServiceTest {
   @BeforeEach
   void setUp() {
     service = new InviteService(invites, users, organizations, refreshTokens, passwordEncoder,
-        jwtService);
+        jwtService, onboardingProgress);
     orgId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
     org = new Organization();

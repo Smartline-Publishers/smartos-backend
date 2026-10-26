@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
   Optional<AppUser> findByOrganization_IdAndEmail(UUID organizationId, String email);
+  Optional<AppUser> findByOrganization_IdAndEmailIgnoreCase(UUID organizationId, String email);
   boolean existsByOrganization_IdAndEmail(UUID organizationId, String email);
   Page<AppUser> findByOrganization_Id(UUID organizationId, Pageable pageable);
   Optional<AppUser> findByIdAndOrganization_Id(UUID id, UUID organizationId);

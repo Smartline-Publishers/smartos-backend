@@ -62,6 +62,16 @@ public class AppUser implements BelongsToOrganization {
   @Column(name = "totp_enabled", nullable = false)
   private boolean totpEnabled = false;
 
+  /**
+   * Monotonic token generation. Access and refresh tokens carry this value;
+   * bumping it invalidates every token issued before a password change/reset.
+   */
+  @Column(name = "auth_version", nullable = false)
+  private int authVersion = 0;
+
+  @Column(name = "last_password_change_at")
+  private Instant lastPasswordChangeAt;
+
   @CreatedBy
   @Column(name = "created_by")
   private UUID createdBy;
@@ -159,6 +169,22 @@ public class AppUser implements BelongsToOrganization {
 
   public void setTotpEnabled(boolean totpEnabled) {
     this.totpEnabled = totpEnabled;
+  }
+
+  public int getAuthVersion() {
+    return authVersion;
+  }
+
+  public void setAuthVersion(int authVersion) {
+    this.authVersion = authVersion;
+  }
+
+  public Instant getLastPasswordChangeAt() {
+    return lastPasswordChangeAt;
+  }
+
+  public void setLastPasswordChangeAt(Instant lastPasswordChangeAt) {
+    this.lastPasswordChangeAt = lastPasswordChangeAt;
   }
 
   public UUID getCreatedBy() {

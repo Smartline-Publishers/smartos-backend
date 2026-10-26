@@ -5,10 +5,14 @@ import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.user.UserDtos.ChangePasswordRequest;
 import com.smartline.smartos.modules.user.UserDtos.CreateUserRequest;
+import com.smartline.smartos.modules.user.UserDtos.PasswordChangeResponse;
 import com.smartline.smartos.modules.user.UserDtos.SessionResponse;
 import com.smartline.smartos.modules.user.UserDtos.UpdateProfileRequest;
 import com.smartline.smartos.modules.user.UserDtos.UpdateUserRequest;
 import com.smartline.smartos.modules.user.UserDtos.UserResponse;
+import com.smartline.smartos.modules.user.PasskeyDtos.PasskeyResponse;
+import com.smartline.smartos.modules.user.PasskeyDtos.RegisterRequest;
+import com.smartline.smartos.modules.user.PasskeyDtos.RenameRequest;
 import com.smartline.smartos.security.UserPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -38,33 +42,36 @@ public class UserController {
 
   private final UserService service;
   private final TwoFactorService twoFactor;
+  private final WebAuthnService webAuthnService;
 
-  public UserController(UserService service, TwoFactorService twoFactor) {
+  public UserController(UserService service, TwoFactorService twoFactor,
+      WebAuthnService webAuthnService) {
     this.service = service;
     this.twoFactor = twoFactor;
+    this.webAuthnService = webAuthnService;
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_users.read')")
   public ApiResponse<PageResponse<UserResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(service.list(Paging.capped(pageable)).map(UserResponse::from)));
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_users.read')")
   public ApiResponse<UserResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(UserResponse.from(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_users.write')")
   public ApiResponse<UserResponse> create(@Valid @RequestBody CreateUserRequest req) {
     return ApiResponse.ok(UserResponse.from(service.create(req)));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_users.write')")
   public ApiResponse<UserResponse> update(@PathVariable UUID id,
       @RequestBody UpdateUserRequest req) {
     return ApiResponse.ok(UserResponse.from(service.update(id, req)));
@@ -72,7 +79,7 @@ public class UserController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','PLATFORM_ADMIN')")
+  @PreAuthorize("hasAuthority('PERM_users.write')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }
@@ -99,10 +106,11 @@ public class UserController {
   }
 
   @PostMapping("/me/password")
-  @ResponseStatus(HttpStatus.NO_CONTENT)
   @PreAuthorize("isAuthenticated()")
-  public void changePassword(@Valid @RequestBody ChangePasswordRequest req) {
-    service.changePassword(req);
+  public ApiResponse<PasswordChangeResponse> changePassword(
+      @Valid @RequestBody ChangePasswordRequest req,
+      @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
+    return ApiResponse.ok(service.changePassword(req, refreshToken));
   }
 
   @GetMapping("/me/sessions")
@@ -112,12 +120,55 @@ public class UserController {
     return ApiResponse.ok(service.sessions(refreshToken));
   }
 
+  @DeleteMapping("/me/sessions")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("isAuthenticated()")
+  public void revokeOtherSessions(
+      @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
+    service.revokeOtherSessions(refreshToken);
+  }
+
   @DeleteMapping("/me/sessions/{sessionId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @PreAuthorize("isAuthenticated()")
   public void revokeSession(@PathVariable UUID sessionId,
       @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
     service.revokeSession(sessionId, refreshToken);
+  }
+
+  // ---- Self-service passkeys ----
+
+  @GetMapping("/me/passkeys")
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<List<PasskeyResponse>> listPasskeys() {
+    return ApiResponse.ok(webAuthnService.list());
+  }
+
+  @PostMapping("/me/passkeys/options")
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<java.util.Map<String, Object>> passkeyRegistrationOptions() {
+    return ApiResponse.ok(webAuthnService.registrationOptions());
+  }
+
+  @PostMapping("/me/passkeys")
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<PasskeyResponse> registerPasskey(@Valid @RequestBody RegisterRequest req) {
+    return ApiResponse.ok(webAuthnService.register(req));
+  }
+
+  @PatchMapping("/me/passkeys/{id}")
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<PasskeyResponse> renamePasskey(@PathVariable UUID id,
+      @Valid @RequestBody RenameRequest req) {
+    return ApiResponse.ok(webAuthnService.rename(id, req.getNickname()));
+  }
+
+  @DeleteMapping("/me/passkeys/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("isAuthenticated()")
+  public void deletePasskey(@PathVariable UUID id) {
+    webAuthnService.delete(id);
   }
 
   // ---- Self-service two-factor authentication ----

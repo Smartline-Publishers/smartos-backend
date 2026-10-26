@@ -33,7 +33,7 @@ public class InventoryController {
   }
 
   @GetMapping("/movements")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_inventory.read')")
   public ApiResponse<PageResponse<MovementResponse>> movements(
       @RequestParam(required = false) UUID bookId,
       @RequestParam(required = false) UUID warehouseId,
@@ -44,13 +44,13 @@ public class InventoryController {
 
   @PostMapping("/movements")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','WAREHOUSE')")
+  @PreAuthorize("hasAuthority('PERM_inventory.write')")
   public ApiResponse<MovementResponse> record(@Valid @RequestBody CreateMovementRequest req) {
     return ApiResponse.ok(InventoryMapper.toResponse(service.recordMovement(req)));
   }
 
   @GetMapping("/levels")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_inventory.read')")
   public ApiResponse<List<StockLevelResponse>> levels(
       @RequestParam(required = false) UUID bookId,
       @RequestParam(required = false) UUID warehouseId,
@@ -60,7 +60,7 @@ public class InventoryController {
 
   @PostMapping("/transfers")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','WAREHOUSE')")
+  @PreAuthorize("hasAuthority('PERM_inventory.write')")
   public ApiResponse<List<MovementResponse>> transfer(@Valid @RequestBody TransferRequest req) {
     return ApiResponse.ok(service.transfer(req).stream()
         .map(InventoryMapper::toResponse)

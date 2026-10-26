@@ -58,15 +58,28 @@ public class JwtService {
   }
 
   public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles) {
-    return buildToken(userId, orgId, roles, null, accessExpiryMs, "access");
+    return buildToken(userId, orgId, roles, null, accessExpiryMs, "access", 0);
   }
 
   public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles, String email) {
-    return buildToken(userId, orgId, roles, email, accessExpiryMs, "access");
+    return generateAccessToken(userId, orgId, roles, email, 0);
+  }
+
+  /**
+   * Access token carrying the caller's {@code auth_version}. A password
+   * change/reset bumps the version, which makes every older token stale.
+   */
+  public String generateAccessToken(UUID userId, UUID orgId, Collection<String> roles, String email,
+      int authVersion) {
+    return buildToken(userId, orgId, roles, email, accessExpiryMs, "access", authVersion);
   }
 
   public String generateRefreshToken(UUID userId, UUID orgId) {
-    return buildToken(userId, orgId, List.of(), null, refreshExpiryMs, "refresh");
+    return generateRefreshToken(userId, orgId, 0);
+  }
+
+  public String generateRefreshToken(UUID userId, UUID orgId, int authVersion) {
+    return buildToken(userId, orgId, List.of(), null, refreshExpiryMs, "refresh", authVersion);
   }
 
   /**
@@ -74,10 +87,11 @@ public class JwtService {
    * verify endpoint — never as an access or refresh token.
    */
   public String generateChallengeToken(UUID userId, UUID orgId) {
-    return buildToken(userId, orgId, List.of(), null, 300_000L, "2fa-challenge");
+    return buildToken(userId, orgId, List.of(), null, 300_000L, "2fa-challenge", 0);
   }
 
-  private String buildToken(UUID userId, UUID orgId, Collection<String> roles, String email, long ttlMs, String type) {
+  private String buildToken(UUID userId, UUID orgId, Collection<String> roles, String email, long ttlMs,
+      String type, int authVersion) {
     long now = System.currentTimeMillis();
     var builder = Jwts.builder()
         .subject(userId.toString())
@@ -88,7 +102,8 @@ public class JwtService {
         .id(UUID.randomUUID().toString())
         .issuedAt(new Date(now))
         .expiration(new Date(now + ttlMs))
-        .claim("type", type);
+        .claim("type", type)
+        .claim("ver", authVersion);
     if (orgId != null) {
       builder.claim("orgId", orgId.toString());
     }
@@ -125,5 +140,11 @@ public class JwtService {
   public UUID extractOrgId(Claims claims) {
     String orgId = claims.get("orgId", String.class);
     return orgId != null ? UUID.fromString(orgId) : null;
+  }
+
+  /** Token generation, defaulting old tokens without the claim to version 0. */
+  public int extractAuthVersion(Claims claims) {
+    Integer version = claims.get("ver", Integer.class);
+    return version != null ? version : 0;
   }
 }

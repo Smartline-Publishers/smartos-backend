@@ -34,7 +34,7 @@ public class CustomerController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_customers.read')")
   public ApiResponse<PageResponse<CustomerResponse>> list(
       @RequestParam(required = false) String search,
       Pageable pageable) {
@@ -43,20 +43,20 @@ public class CustomerController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_customers.read')")
   public ApiResponse<CustomerResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(CustomerMapper.toResponse(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_customers.write')")
   public ApiResponse<CustomerResponse> create(@Valid @RequestBody CreateCustomerRequest req) {
     return ApiResponse.ok(CustomerMapper.toResponse(service.create(req)));
   }
 
   @PatchMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_customers.write')")
   public ApiResponse<CustomerResponse> update(@PathVariable UUID id,
       @RequestBody UpdateCustomerRequest req) {
     return ApiResponse.ok(CustomerMapper.toResponse(service.update(id, req)));
@@ -64,7 +64,7 @@ public class CustomerController {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_customers.write')")
   public void delete(@PathVariable UUID id) {
     service.delete(id);
   }

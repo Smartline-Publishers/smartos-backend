@@ -27,7 +27,7 @@ public class ReportingController {
   }
 
   @GetMapping("/sales")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_reports.sales.read')")
   public ApiResponse<SalesReport> sales(
       @RequestParam(required = false) LocalDate from,
       @RequestParam(required = false) LocalDate to,
@@ -38,7 +38,7 @@ public class ReportingController {
   }
 
   @GetMapping(value = "/sales.csv", produces = "text/csv")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_reports.sales.read')")
   public ResponseEntity<String> salesCsv(
       @RequestParam(required = false) LocalDate from,
       @RequestParam(required = false) LocalDate to,
@@ -54,13 +54,13 @@ public class ReportingController {
   }
 
   @GetMapping("/royalties")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_reports.sales.read')")
   public ApiResponse<RoyaltyLiability> royalties() {
     return ApiResponse.ok(service.royaltyLiability());
   }
 
   @GetMapping("/editorial")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_reports.editorial.read')")
   public ApiResponse<EditorialReport> editorial(
       @RequestParam(required = false, defaultValue = "30") int days) {
     return ApiResponse.ok(service.editorialReport(Math.max(Math.min(days, 365), 1)));

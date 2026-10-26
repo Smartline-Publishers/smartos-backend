@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.user;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,12 +33,16 @@ class AuthFlowTest {
 
   // JwtService satisfies the JwtAuthenticationFilter @Component in the slice.
   @MockitoBean private AuthService authService;
+  @MockitoBean private PasswordResetService passwordResetService;
+  @MockitoBean private WebAuthnService webAuthnService;
   @MockitoBean private JwtService jwtService;
+  // The filter resolves the caller's live role from the user record.
+  @MockitoBean private AppUserRepository appUserRepository;
 
   @Test
   void loginReturnsToken() throws Exception {
     TokenResponse tokens = new TokenResponse("access-123", "refresh-123", "Bearer");
-    Mockito.when(authService.login(any(LoginRequest.class))).thenReturn(tokens);
+    Mockito.when(authService.login(any(LoginRequest.class), anyString())).thenReturn(tokens);
 
     LoginRequest req = new LoginRequest("admin@acme.test", "secret", UUID.randomUUID());
 

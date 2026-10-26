@@ -53,7 +53,16 @@ public class SecurityConfig {
                 ErrorCode.FORBIDDEN.getCode(), "Access denied")))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(
-                "/api/v1/auth/**",
+                "/api/v1/auth/login",
+                "/api/v1/auth/2fa/verify",
+                "/api/v1/auth/refresh",
+                "/api/v1/auth/logout",
+                "/api/v1/auth/register-organization",
+                "/api/v1/auth/password/forgot",
+                "/api/v1/auth/password/reset",
+                "/api/v1/auth/password/reset/validate",
+                "/api/v1/auth/passkeys/options",
+                "/api/v1/auth/passkeys/verify",
                 "/api/v1/invites/accept",
                 "/api/v1/billing/webhooks/**",
                 "/actuator/health",

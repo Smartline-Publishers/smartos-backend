@@ -39,7 +39,7 @@ public class OrderController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_orders.read')")
   public ApiResponse<PageResponse<OrderResponse>> list(
       @RequestParam(required = false) OrderStatus status,
       @RequestParam(required = false) UUID customerId,
@@ -49,34 +49,34 @@ public class OrderController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_orders.read')")
   public ApiResponse<OrderResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(withItems(service.get(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_orders.write')")
   public ApiResponse<OrderResponse> create(@Valid @RequestBody CreateOrderRequest req) {
     Order order = service.create(req);
     return ApiResponse.ok(withItems(order));
   }
 
   @PostMapping("/{id}/confirm")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_orders.write')")
   public ApiResponse<OrderResponse> confirm(@PathVariable UUID id) {
     return ApiResponse.ok(withItems(service.confirm(id)));
   }
 
   @PostMapping("/{id}/fulfil")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_orders.write')")
   public ApiResponse<OrderResponse> fulfil(@PathVariable UUID id,
       @Valid @RequestBody FulfilOrderRequest req) {
     return ApiResponse.ok(withItems(service.fulfil(id, req.getWarehouseId())));
   }
 
   @PostMapping("/{id}/cancel")
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','SALES')")
+  @PreAuthorize("hasAuthority('PERM_orders.write')")
   public ApiResponse<OrderResponse> cancel(@PathVariable UUID id) {
     return ApiResponse.ok(withItems(service.cancel(id)));
   }

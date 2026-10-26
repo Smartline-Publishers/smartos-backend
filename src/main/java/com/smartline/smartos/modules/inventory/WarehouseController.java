@@ -29,7 +29,7 @@ public class WarehouseController {
   }
 
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_warehouses.read')")
   public ApiResponse<List<WarehouseResponse>> list() {
     return ApiResponse.ok(service.listWarehouses().stream()
         .map(InventoryMapper::toResponse)
@@ -37,21 +37,21 @@ public class WarehouseController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasAuthority('PERM_warehouses.read')")
   public ApiResponse<WarehouseResponse> get(@PathVariable UUID id) {
     return ApiResponse.ok(InventoryMapper.toResponse(service.getWarehouse(id)));
   }
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','WAREHOUSE')")
+  @PreAuthorize("hasAuthority('PERM_warehouses.write')")
   public ApiResponse<WarehouseResponse> create(@Valid @RequestBody CreateWarehouseRequest req) {
     return ApiResponse.ok(InventoryMapper.toResponse(service.createWarehouse(req)));
   }
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  @PreAuthorize("hasAnyRole('ORG_ADMIN','WAREHOUSE')")
+  @PreAuthorize("hasAuthority('PERM_warehouses.write')")
   public void delete(@PathVariable UUID id) {
     service.deleteWarehouse(id);
   }

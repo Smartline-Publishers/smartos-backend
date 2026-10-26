@@ -10,6 +10,7 @@ import com.smartline.smartos.modules.user.InviteDtos.InviteResponse;
 import com.smartline.smartos.security.AuthDtos.TokenResponse;
 import com.smartline.smartos.security.JwtService;
 import com.smartline.smartos.security.Role;
+import com.smartline.smartos.security.RolePermissions;
 import com.smartline.smartos.security.TokenHashes;
 import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
@@ -36,17 +37,20 @@ public class InviteService {
   private final RefreshTokenRepository refreshTokens;
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
+  private final OnboardingProgressRepository onboardingProgress;
   private final SecureRandom random = new SecureRandom();
 
   public InviteService(InviteRepository invites, AppUserRepository users,
       OrganizationRepository organizations, RefreshTokenRepository refreshTokens,
-      PasswordEncoder passwordEncoder, JwtService jwtService) {
+      PasswordEncoder passwordEncoder, JwtService jwtService,
+      OnboardingProgressRepository onboardingProgress) {
     this.invites = invites;
     this.users = users;
     this.organizations = organizations;
     this.refreshTokens = refreshTokens;
     this.passwordEncoder = passwordEncoder;
     this.jwtService = jwtService;
+    this.onboardingProgress = onboardingProgress;
   }
 
   @Transactional
@@ -55,14 +59,18 @@ public class InviteService {
     UUID orgId = TenantContext.require();
     Organization org = organizations.findById(orgId)
         .orElseThrow(() -> ApiException.notFound("Organization", orgId));
-    if (req.getRole() == Role.PLATFORM_ADMIN) {
+    Role role = req.getRole() != null ? req.getRole() : Role.VIEWER;
+    if (role == Role.PLATFORM_ADMIN) {
       throw ApiException.badRequest("Platform admin cannot be granted by invitation");
+    }
+    if (!RolePermissions.isAssignableByOrgAdmin(role)) {
+      throw ApiException.forbidden("You cannot invite a user with the " + role.name() + " role");
     }
     String token = generateToken();
     Invite invite = new Invite();
     invite.setOrganization(org);
     invite.setEmail(req.getEmail().trim().toLowerCase());
-    invite.setRole(req.getRole() != null ? req.getRole() : Role.VIEWER);
+    invite.setRole(role);
     invite.setTokenHash(TokenHashes.sha256Hex(token));
     invite.setExpiresAt(Instant.now().plus(req.getDaysValid() != null ? req.getDaysValid() : 7,
         ChronoUnit.DAYS));
@@ -105,6 +113,12 @@ public class InviteService {
     user.setRole(invite.getRole());
     user.setActive(true);
     AppUser saved = users.save(user);
+    // The invited user gets their own independent onboarding checklist, linked to them alone.
+    OnboardingProgress p = new OnboardingProgress();
+    p.setUserId(saved.getId());
+    p.setUser(saved);
+    p.setOrganization(org);
+    onboardingProgress.save(p);
     invite.setAcceptedAt(Instant.now());
     invites.save(invite);
     List<String> roles = List.of(saved.getRole().name());

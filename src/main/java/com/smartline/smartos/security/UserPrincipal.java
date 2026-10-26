@@ -32,7 +32,15 @@ public class UserPrincipal implements UserDetails {
 
   @Override
   public java.util.Collection<? extends GrantedAuthority> getAuthorities() {
-    return roles.stream().map(r -> new SimpleGrantedAuthority("ROLE_" + r)).toList();
+    List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+    authorities.addAll(roles.stream().map(r -> (GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + r))
+        .toList());
+    // Permission authorities are derived from the role matrix, so a single
+    // change in RolePermissions propagates to every guarded endpoint.
+    authorities.addAll(RolePermissions.forRoleNames(roles).stream()
+        .map(p -> (GrantedAuthority) new SimpleGrantedAuthority(p.authority()))
+        .toList());
+    return authorities;
   }
 
   @Override

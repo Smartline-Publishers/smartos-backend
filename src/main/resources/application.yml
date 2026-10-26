@@ -25,6 +25,19 @@ spring:
     multipart:
       max-file-size: 6MB
       max-request-size: 6MB
+  # Optional SMTP transport. The mail sender is only used when
+  # app.mail.enabled=true; leave SPRING_MAIL_HOST blank to disable entirely.
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 springdoc:
   api-docs:
@@ -39,6 +52,37 @@ app:
     refresh-expiry-ms: 604800000
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+  # Public base URL of the web app, used to build password-reset links.
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:3000}
+  mail:
+    # Set MAIL_ENABLED=true together with SPRING_MAIL_HOST (and usually
+    # SPRING_MAIL_PORT/USERNAME/PASSWORD) to deliver reset emails.
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:no-reply@smartos.local}
+  security:
+    # Only enable when a trusted reverse proxy overwrites X-Forwarded-For.
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    rate-limit:
+      login-max-failures: 8
+      login-window-seconds: 600
+      forgot-max-requests: 4
+      forgot-window-seconds: 1800
+      passkey-max-failures: 10
+      passkey-window-seconds: 600
+    password-reset:
+      token-ttl-minutes: 30
+      # Local development only: returns the token in the API response when no
+      # mail transport is configured. NEVER enable this in production.
+      expose-dev-token: ${PASSWORD_RESET_EXPOSE_DEV_TOKEN:false}
+  webauthn:
+    # RP ID must be the registrable domain of the web app (localhost in dev).
+    rp-id: ${WEBAUTHN_RP_ID:localhost}
+    rp-name: ${WEBAUTHN_RP_NAME:SmartOS}
+    # Exact browser origins allowed to complete WebAuthn ceremonies.
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS:http://localhost:3000}
+    user-verification: ${WEBAUTHN_USER_VERIFICATION:preferred}
+    timeout-ms: 60000
+    challenge-ttl-seconds: 300
   cloudinary:
     # Image uploads (avatars, logos). All three must be set; when any is
     # blank the upload endpoints answer 501 and URL-based images keep working.
