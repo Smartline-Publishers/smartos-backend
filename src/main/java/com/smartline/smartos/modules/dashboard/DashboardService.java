@@ -7,6 +7,7 @@ import com.smartline.smartos.modules.book.Book.BookStatus;
 import com.smartline.smartos.modules.book.BookRepository;
 import com.smartline.smartos.modules.book.ContributorRepository;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.ActivityItem;
+import com.smartline.smartos.modules.dashboard.DashboardDtos.ActivityScope;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.AttentionItem;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.DashboardSummary;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.PipelineSlice;
@@ -35,6 +36,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -78,6 +80,12 @@ public class DashboardService {
    * permission that governs it, so an editor never sees money and a finance
    * user never sees the editorial pipeline. The API is the single source of
    * truth: the web app renders exactly what this returns.
+   *
+   * <p>Activity is always scoped: without {@code audit.read} the feed contains
+   * only the caller's own entries. Organisation-wide activity requires that
+   * administrative permission and is still limited to the caller's own
+   * organisation, resolved from the authenticated account rather than from any
+   * request parameter.
    */
   public DashboardSummary summary(UserPrincipal principal) {
     UUID orgId = TenantContext.require();
@@ -109,6 +117,11 @@ public class DashboardService {
         ? manuscripts.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
         : List.of();
 
+    // Activity is personal by default. Only a caller who holds the
+    // administrative audit permission may see the organisation-wide feed, and
+    // even then the query stays inside the organisation from the token.
+    boolean canViewOrgActivity = perms.contains(Permission.AUDIT_READ);
+
     DashboardSummary summary = new DashboardSummary();
     summary.setTotalBooks(allBooks.size());
     summary.setPublishedBooks((int) published);
@@ -119,7 +132,8 @@ public class DashboardService {
         : List.of());
     summary.setTitlePipeline(canViewBooks ? titlePipeline(allBooks) : List.of());
     summary.setAttention(attention(orgId, allManuscripts, perms));
-    summary.setActivity(activity(orgId));
+    summary.setActivityScope(canViewOrgActivity ? ActivityScope.ORGANIZATION : ActivityScope.SELF);
+    summary.setActivity(activity(orgId, canViewOrgActivity ? null : principal.getUserId()));
     summary.setTrends(trends(allBooks, allStatements, canViewFinance));
     return summary;
   }
@@ -206,14 +220,30 @@ public class DashboardService {
     return items.stream().limit(MAX_ATTENTION).toList();
   }
 
-  private List<ActivityItem> activity(UUID orgId) {
-    List<AuditLog> logs = auditLogs.findTop8ByOrganizationIdOrderByCreatedAtDesc(orgId);
+  /**
+   * Recent audit entries for the dashboard feed.
+   *
+   * @param actorId when non-null, restricts the feed to this actor only. The
+   *                organisation id is always applied as well, so a call can
+   *                never return another organisation's activity.
+   */
+  private List<ActivityItem> activity(UUID orgId, UUID actorId) {
+    List<AuditLog> logs = actorId != null
+        ? auditLogs.findTop8ByOrganizationIdAndActorIdOrderByCreatedAtDesc(orgId, actorId)
+        : auditLogs.findTop8ByOrganizationIdOrderByCreatedAtDesc(orgId);
+    if (logs.isEmpty()) {
+      return List.of();
+    }
+    List<UUID> actorIds = logs.stream().map(AuditLog::getActorId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
     Map<UUID, String> names = new HashMap<>();
-    users.findAllById(logs.stream().map(AuditLog::getActorId)
-            .filter(id -> id != null)
-            .distinct()
-            .toList())
-        .forEach(u -> names.put(u.getId(), u.getFullName()));
+    if (!actorIds.isEmpty()) {
+      // Resolve names within the same organisation as the feed, never globally.
+      users.findByOrganization_IdAndIdIn(orgId, actorIds)
+          .forEach(u -> names.put(u.getId(), u.getFullName()));
+    }
     List<ActivityItem> feed = new ArrayList<>();
     for (AuditLog log : logs) {
       String actor = log.getActorId() != null

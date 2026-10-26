@@ -2,6 +2,8 @@ package com.smartline.smartos.modules.user;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.modules.audit.AuditService;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.security.AuthDtos.LoginRequest;
 import com.smartline.smartos.security.AuthDtos.SessionInfo;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -42,6 +46,7 @@ class JwtSecurityHttpTest {
   @MockitoBean private AppUserRepository users;
   @MockitoBean private UserService userService;
   @MockitoBean private TwoFactorService twoFactorService;
+  @MockitoBean private AuditService auditService;
   @MockitoBean private Claims claims;
 
   @Test
@@ -92,5 +97,42 @@ class JwtSecurityHttpTest {
     mockMvc.perform(get("/api/v1/users").header("Authorization", "Bearer access-token"))
         .andExpect(status().isForbidden());
     verifyNoInteractions(userService);
+  }
+
+  /**
+   * Activity records are administrative data: a regular user must not reach
+   * the organisation audit list at all, while an organisation administrator
+   * gets only the list for the organisation resolved from their own account.
+   */
+  @Test
+  void auditLogRejectsRegularUsersAndScopesAdminsToTheirOwnOrganization() throws Exception {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+    Organization organization = new Organization();
+    organization.setId(organizationId);
+    AppUser user = new AppUser();
+    user.setId(userId);
+    user.setOrganization(organization);
+    user.setRole(Role.VIEWER);
+    user.setActive(true);
+
+    when(jwtService.parse("access-token")).thenReturn(claims);
+    when(claims.get("type", String.class)).thenReturn("access");
+    when(claims.getSubject()).thenReturn(userId.toString());
+    when(users.findById(userId)).thenReturn(Optional.of(user));
+
+    mockMvc.perform(get("/api/v1/audit-logs").header("Authorization", "Bearer access-token"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(auditService);
+
+    user.setRole(Role.ORG_ADMIN);
+    when(auditService.list(any())).thenReturn(Page.empty());
+    when(users.findByOrganization_Id(any(UUID.class), any())).thenReturn(Page.empty());
+
+    mockMvc.perform(get("/api/v1/audit-logs").header("Authorization", "Bearer access-token"))
+        .andExpect(status().isOk());
+
+    verify(auditService).list(any());
+    verify(users).findByOrganization_Id(eq(organizationId), any());
   }
 }

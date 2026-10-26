@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.smartline.smartos.modules.audit.AuditLog;
@@ -12,6 +14,7 @@ import com.smartline.smartos.modules.book.Book;
 import com.smartline.smartos.modules.book.Book.BookStatus;
 import com.smartline.smartos.modules.book.BookRepository;
 import com.smartline.smartos.modules.book.ContributorRepository;
+import com.smartline.smartos.modules.dashboard.DashboardDtos.ActivityScope;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.DashboardSummary;
 import com.smartline.smartos.modules.finance.RoyaltyStatement;
 import com.smartline.smartos.modules.finance.RoyaltyStatement.StatementStatus;
@@ -132,7 +135,7 @@ class DashboardServiceTest {
     log.setCreatedAt(now);
     when(auditLogs.findTop8ByOrganizationIdOrderByCreatedAtDesc(eq(orgId)))
         .thenReturn(List.of(log));
-    when(users.findAllById(any())).thenReturn(List.of(actor));
+    when(users.findByOrganization_IdAndIdIn(eq(orgId), any())).thenReturn(List.of(actor));
 
     DashboardSummary summary = service.summary(principal);
 
@@ -142,12 +145,51 @@ class DashboardServiceTest {
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("task-")));
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("stock-")));
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("manuscript-")));
+    assertEquals(ActivityScope.ORGANIZATION, summary.getActivityScope());
     assertEquals("Ama Serwaa", summary.getActivity().get(0).getActor());
     assertEquals("created a book", summary.getActivity().get(0).getAction());
     assertEquals(12, summary.getTrends().getBooks().size());
     assertEquals(2, summary.getTrends().getBooks().get(11).intValue());
     assertEquals(5, summary.getManuscriptPipeline().size());
     assertEquals(6, summary.getTitlePipeline().size());
+  }
+
+  @Test
+  void nonAdminActivityOnlyContainsTheCallersOwnEntries() {
+    principal = new UserPrincipal(userId, orgId, List.of(Role.VIEWER.name()));
+    stubReadOnlySources();
+
+    AppUser actor = new AppUser();
+    actor.setId(userId);
+    actor.setFullName("Vera Viewer");
+    AuditLog own = new AuditLog();
+    own.setId(UUID.randomUUID());
+    own.setActorId(userId);
+    own.setAction("task.update");
+    own.setCreatedAt(Instant.now());
+    when(auditLogs.findTop8ByOrganizationIdAndActorIdOrderByCreatedAtDesc(eq(orgId), eq(userId)))
+        .thenReturn(List.of(own));
+    when(users.findByOrganization_IdAndIdIn(eq(orgId), any())).thenReturn(List.of(actor));
+
+    DashboardSummary summary = service.summary(principal);
+
+    assertEquals(ActivityScope.SELF, summary.getActivityScope());
+    assertEquals(1, summary.getActivity().size());
+    assertEquals("Vera Viewer", summary.getActivity().get(0).getActor());
+    assertEquals("updated a task", summary.getActivity().get(0).getAction());
+    verify(auditLogs, never()).findTop8ByOrganizationIdOrderByCreatedAtDesc(any());
+  }
+
+  /** Empty sources for every section a read-only role may see. */
+  private void stubReadOnlySources() {
+    when(books.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(contributors.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
+    when(manuscripts.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(tasks.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
+        .thenReturn(new PageImpl<>(List.of()));
+    when(inventory.levels(eq(null), eq(null), eq(null))).thenReturn(List.of());
   }
 
   private Book book(String title, BookStatus status, Instant createdAt) {

@@ -1,4 +1,11 @@
 {
+  "groups": [
+    {
+      "name": "app",
+      "type": "java.util.Map",
+      "description": "Application-specific configuration settings."
+    }
+  ],
   "properties": [
     {
       "name": "app.jwt.secret",

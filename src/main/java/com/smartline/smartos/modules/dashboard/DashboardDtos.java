@@ -12,6 +12,16 @@ public final class DashboardDtos {
   private DashboardDtos() {
   }
 
+  /**
+   * Who the activity feed describes. {@code SELF} rows are strictly the
+   * caller's own actions; {@code ORGANIZATION} rows cover the caller's whole
+   * organisation and are only produced for holders of {@code audit.read}.
+   */
+  public enum ActivityScope {
+    SELF,
+    ORGANIZATION
+  }
+
   public static class PipelineSlice {
     private String stage;
     private int count;
@@ -208,6 +218,7 @@ public final class DashboardDtos {
     private List<PipelineSlice> titlePipeline;
     private List<AttentionItem> attention;
     private List<ActivityItem> activity;
+    private ActivityScope activityScope;
     private Trends trends;
 
     public DashboardSummary() {
@@ -275,6 +286,14 @@ public final class DashboardDtos {
 
     public void setActivity(List<ActivityItem> activity) {
       this.activity = activity;
+    }
+
+    public ActivityScope getActivityScope() {
+      return activityScope;
+    }
+
+    public void setActivityScope(ActivityScope activityScope) {
+      this.activityScope = activityScope;
     }
 
     public Trends getTrends() {
