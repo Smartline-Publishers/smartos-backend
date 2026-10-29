@@ -424,6 +424,64 @@ public final class BookDtos {
     }
   }
 
+  public static class BookOptionResponse {
+    private UUID id;
+    private String title;
+
+    public BookOptionResponse() {
+    }
+
+    public BookOptionResponse(UUID id, String title) {
+      this.id = id;
+      this.title = title;
+    }
+
+    public UUID getId() {
+      return id;
+    }
+
+    public void setId(UUID id) {
+      this.id = id;
+    }
+
+    public String getTitle() {
+      return title;
+    }
+
+    public void setTitle(String title) {
+      this.title = title;
+    }
+  }
+
+  public static class ContributorOptionResponse {
+    private UUID id;
+    private String fullName;
+
+    public ContributorOptionResponse() {
+    }
+
+    public ContributorOptionResponse(UUID id, String fullName) {
+      this.id = id;
+      this.fullName = fullName;
+    }
+
+    public UUID getId() {
+      return id;
+    }
+
+    public void setId(UUID id) {
+      this.id = id;
+    }
+
+    public String getFullName() {
+      return fullName;
+    }
+
+    public void setFullName(String fullName) {
+      this.fullName = fullName;
+    }
+  }
+
   public static class BookMapper {
     private BookMapper() {
     }

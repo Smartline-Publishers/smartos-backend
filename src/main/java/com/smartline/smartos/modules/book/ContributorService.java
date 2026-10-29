@@ -7,6 +7,7 @@ import com.smartline.smartos.modules.finance.ContractRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.tenant.TenantContext;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +46,16 @@ public class ContributorService {
   @Transactional(readOnly = true)
   public Page<Contributor> list(Pageable pageable) {
     return contributors.findByOrganization_Id(TenantContext.require(), pageable);
+  }
+
+  /**
+   * Minimal contributor reference list for role pages that create royalty
+   * contracts but do not hold {@code contributors.read} (for example finance).
+   * Only the id and display name are exposed.
+   */
+  @Transactional(readOnly = true)
+  public List<Contributor> options() {
+    return contributors.findByOrganization_IdOrderByFullNameAsc(TenantContext.require());
   }
 
   @Transactional(readOnly = true)

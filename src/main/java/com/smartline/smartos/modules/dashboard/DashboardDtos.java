@@ -213,7 +213,18 @@ public final class DashboardDtos {
     private int totalBooks;
     private int publishedBooks;
     private int totalContributors;
-    private BigDecimal pendingRoyalties;
+    private BigDecimal pendingRoyalties = BigDecimal.ZERO;
+    private int teamMembers;
+    private int pendingInvites;
+    private int totalCustomers;
+    private int activeOrders;
+    private BigDecimal revenueThisQuarter = BigDecimal.ZERO;
+    private BigDecimal budgetThisQuarter = BigDecimal.ZERO;
+    private int activeProductionJobs;
+    private int inventoryTitles;
+    private int stockOnHand;
+    private int lowStockItems;
+    private int warehouses;
     private List<PipelineSlice> manuscriptPipeline;
     private List<PipelineSlice> titlePipeline;
     private List<AttentionItem> attention;
@@ -254,6 +265,94 @@ public final class DashboardDtos {
 
     public void setPendingRoyalties(BigDecimal pendingRoyalties) {
       this.pendingRoyalties = pendingRoyalties;
+    }
+
+    public int getTeamMembers() {
+      return teamMembers;
+    }
+
+    public void setTeamMembers(int teamMembers) {
+      this.teamMembers = teamMembers;
+    }
+
+    public int getPendingInvites() {
+      return pendingInvites;
+    }
+
+    public void setPendingInvites(int pendingInvites) {
+      this.pendingInvites = pendingInvites;
+    }
+
+    public int getTotalCustomers() {
+      return totalCustomers;
+    }
+
+    public void setTotalCustomers(int totalCustomers) {
+      this.totalCustomers = totalCustomers;
+    }
+
+    public int getActiveOrders() {
+      return activeOrders;
+    }
+
+    public void setActiveOrders(int activeOrders) {
+      this.activeOrders = activeOrders;
+    }
+
+    public BigDecimal getRevenueThisQuarter() {
+      return revenueThisQuarter;
+    }
+
+    public void setRevenueThisQuarter(BigDecimal revenueThisQuarter) {
+      this.revenueThisQuarter = revenueThisQuarter;
+    }
+
+    public BigDecimal getBudgetThisQuarter() {
+      return budgetThisQuarter;
+    }
+
+    public void setBudgetThisQuarter(BigDecimal budgetThisQuarter) {
+      this.budgetThisQuarter = budgetThisQuarter;
+    }
+
+    public int getActiveProductionJobs() {
+      return activeProductionJobs;
+    }
+
+    public void setActiveProductionJobs(int activeProductionJobs) {
+      this.activeProductionJobs = activeProductionJobs;
+    }
+
+    public int getInventoryTitles() {
+      return inventoryTitles;
+    }
+
+    public void setInventoryTitles(int inventoryTitles) {
+      this.inventoryTitles = inventoryTitles;
+    }
+
+    public int getStockOnHand() {
+      return stockOnHand;
+    }
+
+    public void setStockOnHand(int stockOnHand) {
+      this.stockOnHand = stockOnHand;
+    }
+
+    public int getLowStockItems() {
+      return lowStockItems;
+    }
+
+    public void setLowStockItems(int lowStockItems) {
+      this.lowStockItems = lowStockItems;
+    }
+
+    public int getWarehouses() {
+      return warehouses;
+    }
+
+    public void setWarehouses(int warehouses) {
+      this.warehouses = warehouses;
     }
 
     public List<PipelineSlice> getManuscriptPipeline() {

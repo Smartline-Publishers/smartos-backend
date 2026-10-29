@@ -1,5 +1,6 @@
 package com.smartline.smartos.modules.book;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -15,4 +16,5 @@ public interface BookRepository extends JpaRepository<Book, UUID> {
       UUID organizationId, Book.BookStatus status, String title, Pageable pageable);
   boolean existsByOrganization_IdAndIsbn(UUID organizationId, String isbn);
   long countByOrganization_Id(UUID organizationId);
+  List<Book> findByOrganization_IdOrderByTitleAsc(UUID organizationId);
 }

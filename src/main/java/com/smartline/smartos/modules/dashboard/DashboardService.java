@@ -14,21 +14,35 @@ import com.smartline.smartos.modules.dashboard.DashboardDtos.PipelineSlice;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.Trends;
 import com.smartline.smartos.modules.finance.RoyaltyStatement;
 import com.smartline.smartos.modules.finance.RoyaltyStatementRepository;
+import com.smartline.smartos.modules.finance.Budget;
+import com.smartline.smartos.modules.finance.BudgetRepository;
+import com.smartline.smartos.modules.finance.Transaction;
+import com.smartline.smartos.modules.finance.Transaction.TransactionType;
+import com.smartline.smartos.modules.finance.TransactionRepository;
 import com.smartline.smartos.modules.inventory.InventoryService;
 import com.smartline.smartos.modules.inventory.InventoryDtos.StockLevelResponse;
+import com.smartline.smartos.modules.inventory.WarehouseRepository;
 import com.smartline.smartos.modules.manuscript.Manuscript;
 import com.smartline.smartos.modules.manuscript.Manuscript.ManuscriptStage;
 import com.smartline.smartos.modules.manuscript.ManuscriptRepository;
+import com.smartline.smartos.modules.production.ProductionJob.JobStatus;
+import com.smartline.smartos.modules.production.ProductionJobRepository;
+import com.smartline.smartos.modules.sales.CustomerRepository;
+import com.smartline.smartos.modules.sales.Order.OrderStatus;
+import com.smartline.smartos.modules.sales.OrderRepository;
 import com.smartline.smartos.modules.task.Task;
 import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskRepository;
 import com.smartline.smartos.modules.user.AppUserRepository;
+import com.smartline.smartos.modules.user.InviteRepository;
 import com.smartline.smartos.security.Permission;
 import com.smartline.smartos.security.RolePermissions;
 import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Month;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -57,12 +71,22 @@ public class DashboardService {
   private final RoyaltyStatementRepository statements;
   private final AuditLogRepository auditLogs;
   private final AppUserRepository users;
+  private final InviteRepository invites;
   private final InventoryService inventory;
+  private final OrderRepository orders;
+  private final CustomerRepository customers;
+  private final TransactionRepository transactions;
+  private final BudgetRepository budgets;
+  private final ProductionJobRepository productionJobs;
+  private final WarehouseRepository warehouses;
 
   public DashboardService(BookRepository books, ContributorRepository contributors,
       ManuscriptRepository manuscripts, TaskRepository tasks,
       RoyaltyStatementRepository statements, AuditLogRepository auditLogs,
-      AppUserRepository users, InventoryService inventory) {
+      AppUserRepository users, InviteRepository invites, InventoryService inventory,
+      OrderRepository orders, CustomerRepository customers, TransactionRepository transactions,
+      BudgetRepository budgets, ProductionJobRepository productionJobs,
+      WarehouseRepository warehouses) {
     this.books = books;
     this.contributors = contributors;
     this.manuscripts = manuscripts;
@@ -70,7 +94,14 @@ public class DashboardService {
     this.statements = statements;
     this.auditLogs = auditLogs;
     this.users = users;
+    this.invites = invites;
     this.inventory = inventory;
+    this.orders = orders;
+    this.customers = customers;
+    this.transactions = transactions;
+    this.budgets = budgets;
+    this.productionJobs = productionJobs;
+    this.warehouses = warehouses;
   }
 
   /**
@@ -95,6 +126,13 @@ public class DashboardService {
     boolean canViewContributors = perms.contains(Permission.CONTRIBUTORS_READ);
     boolean canViewFinance = perms.contains(Permission.FINANCE_READ)
         || perms.contains(Permission.ROYALTIES_READ);
+    boolean canViewLedger = perms.contains(Permission.FINANCE_READ);
+    boolean canViewMembers = perms.contains(Permission.USERS_READ);
+    boolean canViewOrders = perms.contains(Permission.ORDERS_READ);
+    boolean canViewCustomers = perms.contains(Permission.CUSTOMERS_READ);
+    boolean canViewProduction = perms.contains(Permission.PRODUCTION_READ);
+    boolean canViewInventory = perms.contains(Permission.INVENTORY_READ);
+    boolean canViewWarehouses = perms.contains(Permission.WAREHOUSES_READ);
 
     List<Book> allBooks = canViewBooks
         ? books.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
@@ -117,6 +155,53 @@ public class DashboardService {
         ? manuscripts.findByOrganization_Id(orgId, Pageable.unpaged()).getContent()
         : List.of();
 
+    // Stock is read once: the same snapshot feeds both the attention list and
+    // the inventory metrics, so the two can never disagree within a response.
+    List<StockLevelResponse> stockLevels =
+        canViewInventory ? inventory.levels(null, null, null) : List.of();
+    int stockOnHand = stockLevels.stream().mapToInt(StockLevelResponse::getQuantity).sum();
+    int inventoryTitles = (int) stockLevels.stream()
+        .filter(l -> l.getQuantity() > 0)
+        .map(StockLevelResponse::getBookId)
+        .distinct()
+        .count();
+    int lowStockItems = (int) stockLevels.stream()
+        .filter(l -> l.getQuantity() < LOW_STOCK_THRESHOLD)
+        .count();
+
+    // Money and budget figures are limited to the current calendar quarter and
+    // only for callers who may read the ledger. Royalty-only readers still see
+    // the pending royalty liability but never ledger revenue or budgets.
+    BigDecimal revenueThisQuarter = BigDecimal.ZERO;
+    BigDecimal budgetThisQuarter = BigDecimal.ZERO;
+    if (canViewLedger) {
+      LocalDate today = LocalDate.now(ZoneOffset.UTC);
+      Month firstMonth = today.getMonth().firstMonthOfQuarter();
+      LocalDate quarterStart = LocalDate.of(today.getYear(), firstMonth, 1);
+      LocalDate quarterEnd = quarterStart.plusMonths(3).minusDays(1);
+      Instant start = quarterStart.atStartOfDay(ZoneOffset.UTC).toInstant();
+      Instant end = quarterEnd.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+      for (Transaction t : transactions.findByOrganization_IdAndCreatedAtBetween(orgId, start,
+          end)) {
+        if (t.getAmount() == null || t.getType() == null) {
+          continue;
+        }
+        if (t.getType() == TransactionType.SALE) {
+          revenueThisQuarter = revenueThisQuarter.add(t.getAmount());
+        } else if (t.getType() == TransactionType.REFUND) {
+          revenueThisQuarter = revenueThisQuarter.subtract(t.getAmount());
+        }
+      }
+      for (Budget b : budgets.findByOrganization_Id(orgId)) {
+        if (b.getPlannedAmount() != null && b.getPeriodStart() != null
+            && b.getPeriodEnd() != null
+            && !b.getPeriodEnd().isBefore(quarterStart)
+            && !b.getPeriodStart().isAfter(quarterEnd)) {
+          budgetThisQuarter = budgetThisQuarter.add(b.getPlannedAmount());
+        }
+      }
+    }
+
     // Activity is personal by default. Only a caller who holds the
     // administrative audit permission may see the organisation-wide feed, and
     // even then the query stays inside the organisation from the token.
@@ -127,11 +212,31 @@ public class DashboardService {
     summary.setPublishedBooks((int) published);
     summary.setTotalContributors(totalContributors);
     summary.setPendingRoyalties(canViewFinance ? pending : BigDecimal.ZERO);
+    summary.setTeamMembers(canViewMembers ? (int) users.countByOrganization_IdAndActiveTrue(orgId) : 0);
+    summary.setPendingInvites(canViewMembers
+        ? (int) invites.countByOrganizationIdAndAcceptedAtIsNullAndExpiresAtAfter(orgId,
+            Instant.now())
+        : 0);
+    summary.setTotalCustomers(canViewCustomers ? (int) customers.countByOrganization_Id(orgId) : 0);
+    summary.setActiveOrders(canViewOrders
+        ? (int) orders.countByOrganization_IdAndStatusIn(orgId,
+            List.of(OrderStatus.DRAFT, OrderStatus.CONFIRMED))
+        : 0);
+    summary.setRevenueThisQuarter(revenueThisQuarter);
+    summary.setBudgetThisQuarter(budgetThisQuarter);
+    summary.setActiveProductionJobs(canViewProduction
+        ? (int) productionJobs.countByOrganization_IdAndStatusIn(orgId,
+            List.of(JobStatus.PLANNED, JobStatus.IN_PROGRESS))
+        : 0);
+    summary.setInventoryTitles(inventoryTitles);
+    summary.setStockOnHand(stockOnHand);
+    summary.setLowStockItems(lowStockItems);
+    summary.setWarehouses(canViewWarehouses ? (int) warehouses.countByOrganization_Id(orgId) : 0);
     summary.setManuscriptPipeline(canViewEditorial
         ? manuscriptPipeline(allManuscripts)
         : List.of());
     summary.setTitlePipeline(canViewBooks ? titlePipeline(allBooks) : List.of());
-    summary.setAttention(attention(orgId, allManuscripts, perms));
+    summary.setAttention(attention(orgId, allManuscripts, stockLevels, perms));
     summary.setActivityScope(canViewOrgActivity ? ActivityScope.ORGANIZATION : ActivityScope.SELF);
     summary.setActivity(activity(orgId, canViewOrgActivity ? null : principal.getUserId()));
     summary.setTrends(trends(allBooks, allStatements, canViewFinance));
@@ -173,7 +278,7 @@ public class DashboardService {
    * it cannot open.
    */
   private List<AttentionItem> attention(UUID orgId, List<Manuscript> allManuscripts,
-      Set<Permission> perms) {
+      List<StockLevelResponse> stockLevels, Set<Permission> perms) {
     List<AttentionItem> items = new ArrayList<>();
     LocalDate today = LocalDate.now(ZoneOffset.UTC);
     if (perms.contains(Permission.TASKS_READ)) {
@@ -187,7 +292,7 @@ public class DashboardService {
               "Overdue " + t.getDueDate(), "/tasks")));
     }
     if (perms.contains(Permission.INVENTORY_READ)) {
-      inventory.levels(null, null, null).stream()
+      stockLevels.stream()
           .filter(l -> l.getQuantity() < LOW_STOCK_THRESHOLD)
           .sorted(Comparator.comparingInt(StockLevelResponse::getQuantity))
           .limit(3)

@@ -10,4 +10,5 @@ public interface ContributorRepository extends JpaRepository<Contributor, UUID> 
   Page<Contributor> findByOrganization_Id(UUID organizationId, Pageable pageable);
   java.util.Optional<Contributor> findByIdAndOrganization_Id(UUID id, UUID organizationId);
   List<Contributor> findByOrganization_Id(UUID organizationId);
+  List<Contributor> findByOrganization_IdOrderByFullNameAsc(UUID organizationId);
 }

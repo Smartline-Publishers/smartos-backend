@@ -3,9 +3,11 @@ package com.smartline.smartos.modules.book;
 import com.smartline.smartos.common.ApiResponse;
 import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
+import com.smartline.smartos.modules.book.BookDtos.ContributorOptionResponse;
 import com.smartline.smartos.modules.book.BookDtos.ContributorResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateContributorRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,6 +36,15 @@ public class ContributorController {
   public ApiResponse<PageResponse<ContributorResponse>> list(Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
         service.list(Paging.capped(pageable)).map(BookDtos.BookMapper::toResponse)));
+  }
+
+  @GetMapping("/options")
+  @PreAuthorize("hasAnyAuthority('PERM_contributors.read','PERM_royalties.read',"
+      + "'PERM_books.write')")
+  public ApiResponse<List<ContributorOptionResponse>> options() {
+    return ApiResponse.ok(service.options().stream()
+        .map(c -> new ContributorOptionResponse(c.getId(), c.getFullName()))
+        .toList());
   }
 
   @GetMapping("/{id}")

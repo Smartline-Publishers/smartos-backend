@@ -9,4 +9,5 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, UUID> {
   Optional<Warehouse> findByIdAndOrganization_Id(UUID id, UUID organizationId);
   List<Warehouse> findByOrganization_IdOrderByName(UUID organizationId);
   boolean existsByOrganization_IdAndName(UUID organizationId, String name);
+  long countByOrganization_Id(UUID organizationId);
 }

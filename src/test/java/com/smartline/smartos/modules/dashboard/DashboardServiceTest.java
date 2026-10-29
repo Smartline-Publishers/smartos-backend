@@ -16,6 +16,7 @@ import com.smartline.smartos.modules.book.BookRepository;
 import com.smartline.smartos.modules.book.ContributorRepository;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.ActivityScope;
 import com.smartline.smartos.modules.dashboard.DashboardDtos.DashboardSummary;
+import com.smartline.smartos.modules.finance.BudgetRepository;
 import com.smartline.smartos.modules.finance.RoyaltyStatement;
 import com.smartline.smartos.modules.finance.RoyaltyStatement.StatementStatus;
 import com.smartline.smartos.modules.finance.RoyaltyStatementRepository;
@@ -25,11 +26,17 @@ import com.smartline.smartos.modules.manuscript.Manuscript;
 import com.smartline.smartos.modules.manuscript.Manuscript.ManuscriptStage;
 import com.smartline.smartos.modules.manuscript.ManuscriptRepository;
 import com.smartline.smartos.modules.organization.Organization;
+import com.smartline.smartos.modules.production.ProductionJobRepository;
+import com.smartline.smartos.modules.sales.CustomerRepository;
+import com.smartline.smartos.modules.sales.OrderRepository;
 import com.smartline.smartos.modules.task.Task;
 import com.smartline.smartos.modules.task.Task.TaskStatus;
 import com.smartline.smartos.modules.task.TaskRepository;
 import com.smartline.smartos.modules.user.AppUser;
 import com.smartline.smartos.modules.user.AppUserRepository;
+import com.smartline.smartos.modules.user.InviteRepository;
+import com.smartline.smartos.modules.finance.TransactionRepository;
+import com.smartline.smartos.modules.inventory.WarehouseRepository;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
@@ -59,7 +66,14 @@ class DashboardServiceTest {
   @Mock private RoyaltyStatementRepository statements;
   @Mock private AuditLogRepository auditLogs;
   @Mock private AppUserRepository users;
+  @Mock private InviteRepository invites;
   @Mock private InventoryService inventory;
+  @Mock private OrderRepository orders;
+  @Mock private CustomerRepository customers;
+  @Mock private TransactionRepository transactions;
+  @Mock private BudgetRepository budgets;
+  @Mock private ProductionJobRepository productionJobs;
+  @Mock private WarehouseRepository warehouses;
 
   private DashboardService service;
   private UUID orgId;
@@ -70,7 +84,8 @@ class DashboardServiceTest {
   @BeforeEach
   void setUp() {
     service = new DashboardService(books, contributors, manuscripts, tasks, statements,
-        auditLogs, users, inventory);
+        auditLogs, users, invites, inventory, orders, customers, transactions,
+        budgets, productionJobs, warehouses);
     orgId = UUID.randomUUID();
     userId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
@@ -136,12 +151,26 @@ class DashboardServiceTest {
     when(auditLogs.findTop8ByOrganizationIdOrderByCreatedAtDesc(eq(orgId)))
         .thenReturn(List.of(log));
     when(users.findByOrganization_IdAndIdIn(eq(orgId), any())).thenReturn(List.of(actor));
+    when(invites.countByOrganizationIdAndAcceptedAtIsNullAndExpiresAtAfter(eq(orgId), any()))
+        .thenReturn(0L);
+    when(orders.countByOrganization_IdAndStatusIn(eq(orgId), any())).thenReturn(0L);
+    when(transactions.findByOrganization_IdAndCreatedAtBetween(eq(orgId), any(), any()))
+        .thenReturn(List.of());
+    when(budgets.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
+    when(productionJobs.countByOrganization_IdAndStatusIn(eq(orgId), any())).thenReturn(0L);
+    when(warehouses.countByOrganization_Id(eq(orgId))).thenReturn(0L);
 
     DashboardSummary summary = service.summary(principal);
 
     assertEquals(2, summary.getTotalBooks());
     assertEquals(1, summary.getPublishedBooks());
     assertEquals(0, new BigDecimal("100.00").compareTo(summary.getPendingRoyalties()));
+    assertEquals(0, summary.getTeamMembers());
+    assertEquals(0, summary.getPendingInvites());
+    assertEquals(0, summary.getTotalCustomers());
+    assertEquals(0, summary.getActiveOrders());
+    assertEquals(0, summary.getActiveProductionJobs());
+    assertEquals(0, summary.getWarehouses());
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("task-")));
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("stock-")));
     assertTrue(summary.getAttention().stream().anyMatch(a -> a.getId().startsWith("manuscript-")));
@@ -190,6 +219,7 @@ class DashboardServiceTest {
     when(tasks.findByOrganization_Id(eq(orgId), eq(Pageable.unpaged())))
         .thenReturn(new PageImpl<>(List.of()));
     when(inventory.levels(eq(null), eq(null), eq(null))).thenReturn(List.of());
+    when(productionJobs.countByOrganization_IdAndStatusIn(eq(orgId), any())).thenReturn(0L);
   }
 
   private Book book(String title, BookStatus status, Instant createdAt) {

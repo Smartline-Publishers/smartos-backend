@@ -11,4 +11,5 @@ public interface CustomerRepository extends JpaRepository<Customer, UUID> {
   Page<Customer> findByOrganization_Id(UUID organizationId, Pageable pageable);
   Page<Customer> findByOrganization_IdAndNameContainingIgnoreCase(UUID organizationId, String name,
       Pageable pageable);
+  long countByOrganization_Id(UUID organizationId);
 }

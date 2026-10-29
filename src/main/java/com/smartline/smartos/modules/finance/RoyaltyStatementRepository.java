@@ -13,4 +13,5 @@ public interface RoyaltyStatementRepository extends JpaRepository<RoyaltyStateme
   Page<RoyaltyStatement> findByOrganization_IdAndStatus(UUID organizationId, StatementStatus status,
       Pageable pageable);
   boolean existsByContractId(UUID contractId);
+  long countByContractId(UUID contractId);
 }

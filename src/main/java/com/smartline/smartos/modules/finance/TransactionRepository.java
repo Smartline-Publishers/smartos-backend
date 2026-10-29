@@ -17,4 +17,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
       String category, Pageable pageable);
   List<Transaction> findByOrganization_IdAndTypeAndCreatedAtBetween(UUID organizationId,
       TransactionType type, Instant start, Instant end);
+  List<Transaction> findByOrganization_IdAndCreatedAtBetween(UUID organizationId, Instant start,
+      Instant end);
 }

@@ -87,6 +87,16 @@ public class BookService {
         .orElseThrow(() -> ApiException.notFound("Book", id));
   }
 
+  /**
+   * Minimal book reference list for operational screens (orders, production,
+   * inventory, royalties, reports) whose roles need a title picker but do not
+   * hold the full {@code books.read} catalogue permission.
+   */
+  @Transactional(readOnly = true)
+  public List<Book> options() {
+    return books.findByOrganization_IdOrderByTitleAsc(TenantContext.require());
+  }
+
   @Transactional
   @Audited(action = "book.update", entityType = "Book")
   public Book update(UUID id, UpdateBookRequest req) {

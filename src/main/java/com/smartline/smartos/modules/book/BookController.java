@@ -5,11 +5,13 @@ import com.smartline.smartos.common.Paging;
 import com.smartline.smartos.common.PageResponse;
 import com.smartline.smartos.modules.book.Book.BookStatus;
 import com.smartline.smartos.modules.book.BookDtos.BookLinkResponse;
+import com.smartline.smartos.modules.book.BookDtos.BookOptionResponse;
 import com.smartline.smartos.modules.book.BookDtos.BookResponse;
 import com.smartline.smartos.modules.book.BookDtos.CreateBookRequest;
 import com.smartline.smartos.modules.book.BookDtos.LinkContributorRequest;
 import com.smartline.smartos.modules.book.BookDtos.UpdateBookRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -43,6 +45,16 @@ public class BookController {
       Pageable pageable) {
     return ApiResponse.ok(PageResponse.from(
         service.list(status, search, Paging.capped(pageable)).map(BookDtos.BookMapper::toResponse)));
+  }
+
+  @GetMapping("/options")
+  @PreAuthorize("hasAnyAuthority('PERM_books.read','PERM_orders.read','PERM_production.read',"
+      + "'PERM_inventory.read','PERM_royalties.read','PERM_reports.sales.read',"
+      + "'PERM_reports.editorial.read')")
+  public ApiResponse<List<BookOptionResponse>> options() {
+    return ApiResponse.ok(service.options().stream()
+        .map(b -> new BookOptionResponse(b.getId(), b.getTitle()))
+        .toList());
   }
 
   @GetMapping("/{id}")

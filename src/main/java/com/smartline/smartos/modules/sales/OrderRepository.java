@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.sales;
 
 import com.smartline.smartos.modules.sales.Order.OrderStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,4 +26,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
       Pageable pageable);
   boolean existsByOrganization_IdAndCustomerId(UUID organizationId, UUID customerId);
   List<Order> findByOrganization_IdAndStatus(UUID organizationId, OrderStatus status);
+  long countByOrganization_IdAndStatusIn(UUID organizationId, Collection<OrderStatus> statuses);
+  long countByOrganization_IdAndCustomerId(UUID organizationId, UUID customerId);
 }

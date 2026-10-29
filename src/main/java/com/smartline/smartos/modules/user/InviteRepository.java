@@ -13,4 +13,6 @@ public interface InviteRepository extends JpaRepository<Invite, UUID> {
   /** A pending invitation: not yet accepted and not expired. */
   Optional<Invite> findByOrganizationIdAndEmailAndAcceptedAtIsNullAndExpiresAtAfter(
       UUID organizationId, String email, Instant now);
+  long countByOrganizationIdAndAcceptedAtIsNullAndExpiresAtAfter(
+      UUID organizationId, Instant now);
 }

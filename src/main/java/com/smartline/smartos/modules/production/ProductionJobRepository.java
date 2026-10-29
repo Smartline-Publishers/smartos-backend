@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.production;
 
 import com.smartline.smartos.modules.production.ProductionJob.JobStatus;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -22,4 +23,5 @@ public interface ProductionJobRepository extends JpaRepository<ProductionJob, UU
   @EntityGraph(attributePaths = {"book"})
   Page<ProductionJob> findByOrganization_IdAndBookId(UUID organizationId, UUID bookId,
       Pageable pageable);
+  long countByOrganization_IdAndStatusIn(UUID organizationId, Collection<JobStatus> statuses);
 }
