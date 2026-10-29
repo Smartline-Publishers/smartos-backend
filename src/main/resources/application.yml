@@ -40,6 +40,8 @@ app:
   mail:
     # SMTP_* is the primary configuration; legacy SPRING_MAIL_* values are
     # also read by MailConfig. Provider presets supply a host/port when omitted.
+    # MAIL_ENABLED alone does not send anything: SMTP_SERVER (or a supported
+    # EMAIL_PROVIDER) plus credentials are required.
     enabled: ${MAIL_ENABLED:false}
     provider: ${EMAIL_PROVIDER:}
     host: ${SMTP_SERVER:}
@@ -47,7 +49,32 @@ app:
     username: ${SMTP_EMAIL:}
     password: ${SMTP_PASSWORD:}
     use-ssl: ${SMTP_USE_SSL:}
+    # STARTTLS is used on 587; implicit TLS is used on 465. A trusted local
+    # relay without STARTTLS can set SMTP_STARTTLS_REQUIRED=false.
+    starttls: ${SMTP_STARTTLS:true}
+    starttls-required: ${SMTP_STARTTLS_REQUIRED:true}
+    timeout-ms: ${SMTP_TIMEOUT_MS:10000}
+    # Providers reject a From address that differs from the authenticated
+    # mailbox, so an unset MAIL_FROM falls back to SMTP_EMAIL.
     from: ${MAIL_FROM:${SMTP_EMAIL:no-reply@smartos.local}}
+    # Shared branding for every outgoing email (password reset, verification,
+    # welcome, notifications). Values follow the web app palette by default.
+    brand:
+      app-name: ${MAIL_APP_NAME:SmartOS}
+      company-name: ${MAIL_COMPANY_NAME:Smartline Publishers Ltd}
+      eyebrow: ${MAIL_BRAND_EYEBROW:SMARTLINE PUBLISHERS}
+      # Optional absolute HTTPS URL to a raster logo (PNG/JPG, about 320x80).
+      # Leave blank to use the built-in CSS wordmark, which every client renders.
+      logo-url: ${MAIL_LOGO_URL:}
+      primary-color: "${MAIL_PRIMARY_COLOR:#dc2626}"
+      accent-color: "${MAIL_ACCENT_COLOR:#2563eb}"
+      support-email: ${MAIL_SUPPORT_EMAIL:}
+      support-phone: ${MAIL_SUPPORT_PHONE:}
+      support-hours: ${MAIL_SUPPORT_HOURS:}
+      footer-address: ${MAIL_FOOTER_ADDRESS:}
+      privacy-url: ${MAIL_PRIVACY_URL:}
+      terms-url: ${MAIL_TERMS_URL:}
+      help-url: ${MAIL_HELP_URL:}
   security:
     # Only enable when a trusted reverse proxy overwrites X-Forwarded-For.
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}

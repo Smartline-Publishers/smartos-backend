@@ -2,7 +2,7 @@
 
 ## Backend — Modular Monolith (this repo)
 
-Spring Boot 4 / Java 21 bytecode (runs on JDK 21+; CI/dev verified on JDK 25).
+Spring Boot 4 / Java 25 bytecode (requires JDK 25+).
 One deployable, internally split by domain module.
 
 ```text

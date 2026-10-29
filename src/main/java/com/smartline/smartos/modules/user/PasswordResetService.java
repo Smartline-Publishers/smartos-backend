@@ -1,6 +1,7 @@
 package com.smartline.smartos.modules.user;
 
 import com.smartline.smartos.common.exception.ApiException;
+import com.smartline.smartos.common.exception.ErrorCode;
 import com.smartline.smartos.modules.user.PasswordResetDtos.ForgotResponse;
 import com.smartline.smartos.security.AuthRateLimiter;
 import com.smartline.smartos.security.PasswordPolicy;
@@ -67,6 +68,16 @@ public class PasswordResetService {
   @Transactional
   public ForgotResponse requestReset(String rawEmail, String clientIp) {
     String email = rawEmail == null ? "" : rawEmail.trim().toLowerCase(Locale.ROOT);
+
+    // Account-independent check: if the transport is unusable, no request can
+    // ever deliver a link. Failing fast with 503 is honest and leaks nothing
+    // about which addresses exist. The dev-token mode needs no transport.
+    if (!exposeDevToken && !mailer.isEnabled()) {
+      throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, ErrorCode.NOT_CONFIGURED.getCode(),
+          "Password reset email is not available right now. "
+              + "Please try again later or contact support.");
+    }
+
     if (!rateLimiter.forgotAllowed(email, clientIp)) {
       throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "TOO_MANY_REQUESTS",
           "Too many reset requests. Try again later.");

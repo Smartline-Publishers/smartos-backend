@@ -1,97 +1,70 @@
 package com.smartline.smartos.modules.user;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.smartline.smartos.common.mail.BrandedEmailSender;
 import com.smartline.smartos.common.mail.BrandedEmailTemplate;
-import jakarta.mail.AuthenticationFailedException;
-import jakarta.mail.Multipart;
-import jakarta.mail.internet.MimeMessage;
+import com.smartline.smartos.common.mail.EmailBrand;
+import com.smartline.smartos.common.mail.EmailContent;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.support.StaticListableBeanFactory;
-import org.springframework.mail.MailAuthenticationException;
-import org.springframework.mail.MailSendException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 class PasswordResetMailerTest {
 
   @Test
-  void sendsBrandedHtmlAndPlainTextAlternatives() throws Exception {
-    JavaMailSender sender = mock(JavaMailSender.class);
-    MimeMessage message = new JavaMailSenderImpl().createMimeMessage();
-    StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
-    beanFactory.addBean("javaMailSender", sender);
-    var senderProvider = beanFactory.getBeanProvider(JavaMailSender.class);
-    when(sender.createMimeMessage()).thenReturn(message);
-
-    PasswordResetMailer mailer = new PasswordResetMailer(
-        senderProvider, true, "no-reply@smartos.example",
-        "https://app.smartos.example", "", new BrandedEmailTemplate());
-    AppUser user = new AppUser();
-    user.setEmail("alex@example.com");
-    user.setFullName("Alex");
+  void sendsPasswordResetContentThroughSharedBrandedSender() {
+    BrandedEmailSender sender = org.mockito.Mockito.mock(BrandedEmailSender.class);
+    when(sender.send(anyString(), anyString(), any(EmailContent.class))).thenReturn(true);
+    PasswordResetMailer mailer = mailer(sender);
+    AppUser user = userWithEmail("alex@example.com");
 
     assertTrue(mailer.send(user, "single-use-token"));
-    verify(sender).send(message);
-    assertEquals("Reset your SmartOS password", message.getSubject());
 
-    Multipart mixed = assertInstanceOf(Multipart.class, message.getContent());
-    Multipart alternatives = assertInstanceOf(Multipart.class, mixed.getBodyPart(0).getContent());
-    assertEquals("alternative", alternatives.getContentType()
-        .substring(alternatives.getContentType().indexOf('/') + 1)
-        .split(";")[0]);
-    String text = alternatives.getBodyPart(0).getContent().toString();
-    String html = alternatives.getBodyPart(1).getContent().toString();
-    assertTrue(text.contains("https://app.smartos.example/reset-password?token=single-use-token"));
-    assertTrue(html.contains("SmartOS"));
-    assertTrue(html.contains("Reset password"));
+    var contentCaptor = org.mockito.ArgumentCaptor.forClass(EmailContent.class);
+    verify(sender).send(eq("alex@example.com"), eq("Reset your SmartOS password"),
+        contentCaptor.capture());
+    BrandedEmailTemplate.RenderedEmail rendered =
+        new BrandedEmailTemplate(EmailBrand.defaults()).render(contentCaptor.getValue());
+    assertTrue(rendered.text().contains(
+        "https://app.smartos.example/reset-password?token=single-use-token"));
+    assertTrue(rendered.html().contains("SmartOS"));
+    assertTrue(rendered.html().contains("Reset password"));
   }
 
   @Test
-  void handlesSmtpAuthenticationFailureWithoutExposingProviderDetails() {
-    JavaMailSender sender = mock(JavaMailSender.class);
-    MimeMessage message = new JavaMailSenderImpl().createMimeMessage();
-    StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
-    beanFactory.addBean("javaMailSender", sender);
-    var senderProvider = beanFactory.getBeanProvider(JavaMailSender.class);
-    when(sender.createMimeMessage()).thenReturn(message);
-    doThrow(new MailAuthenticationException("secret provider response"))
-        .when(sender).send(message);
-    PasswordResetMailer mailer = new PasswordResetMailer(
-        senderProvider, true, "no-reply@smartos.example",
-        "https://app.smartos.example", "", new BrandedEmailTemplate());
-    AppUser user = new AppUser();
-    user.setEmail("alex@example.com");
-    user.setFullName("Alex");
+  void returnsFalseWhenSharedSenderReportsDeliveryFailure() {
+    BrandedEmailSender sender = org.mockito.Mockito.mock(BrandedEmailSender.class);
+    when(sender.send(anyString(), anyString(), any(EmailContent.class))).thenReturn(false);
+    PasswordResetMailer mailer = mailer(sender);
 
-    assertFalse(mailer.send(user, "single-use-token"));
+    assertFalse(mailer.send(userWithEmail("alex@example.com"), "single-use-token"));
   }
 
   @Test
-  void identifiesAuthenticationFailureWrappedBySmtpSendException() {
-    JavaMailSender sender = mock(JavaMailSender.class);
-    MimeMessage message = new JavaMailSenderImpl().createMimeMessage();
-    StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
-    beanFactory.addBean("javaMailSender", sender);
-    var senderProvider = beanFactory.getBeanProvider(JavaMailSender.class);
-    when(sender.createMimeMessage()).thenReturn(message);
-    doThrow(new MailSendException("SMTP failed",
-        new AuthenticationFailedException("secret provider response")))
-        .when(sender).send(message);
-    PasswordResetMailer mailer = new PasswordResetMailer(
-        senderProvider, true, "no-reply@smartos.example",
-        "https://app.smartos.example", "", new BrandedEmailTemplate());
-    AppUser user = new AppUser();
-    user.setEmail("alex@example.com");
-    user.setFullName("Alex");
+  void skipsUsersWithoutAnEmailAddress() {
+    BrandedEmailSender sender = org.mockito.Mockito.mock(BrandedEmailSender.class);
+    PasswordResetMailer mailer = mailer(sender);
+    AppUser user = userWithEmail(" ");
 
     assertFalse(mailer.send(user, "single-use-token"));
+    verify(sender, never()).send(anyString(), anyString(), any(EmailContent.class));
+  }
+
+  private static PasswordResetMailer mailer(BrandedEmailSender sender) {
+    return new PasswordResetMailer(sender, EmailBrand.defaults(),
+        "https://app.smartos.example", 30);
+  }
+
+  private static AppUser userWithEmail(String email) {
+    AppUser user = new AppUser();
+    user.setEmail(email);
+    user.setFullName("Alex");
+    return user;
   }
 }

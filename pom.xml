@@ -18,11 +18,13 @@
   <description>SmartOS backend foundation</description>
 
   <properties>
-    <java.version>21</java.version>
+    <java.version>25</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <jjwt.version>0.12.6</jjwt.version>
     <springdoc.version>3.1.1</springdoc.version>
+    <!-- Real in-process SMTP for delivery tests (no external mail needed). -->
+    <greenmail.version>2.1.15</greenmail.version>
     <!-- ByteBuddy newer than Boot's default (4.1.1 manages 1.18.11): required
          for Mockito class-mocking on JDK 25. -->
     <byte-buddy.version>1.18.14</byte-buddy.version>
@@ -45,9 +47,9 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
-    <!-- Transactional email (password reset). The JavaMailSender bean is only
-         created when spring.mail.host is configured; the application treats
-         mail as optional and never logs reset secrets. -->
+    <!-- Transactional email (password reset and other branded messages).
+         MailConfig builds the JavaMailSender from app.mail.*/SMTP_*, so the
+         sender exists but reports "not ready" until a host is configured. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-mail</artifactId>
@@ -134,6 +136,14 @@
     <dependency>
       <groupId>com.h2database</groupId>
       <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- In-process SMTP server: verifies the real MailConfig -> sender ->
+         template pipeline without contacting an external provider. -->
+    <dependency>
+      <groupId>com.icegreen</groupId>
+      <artifactId>greenmail-junit5</artifactId>
+      <version>${greenmail.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

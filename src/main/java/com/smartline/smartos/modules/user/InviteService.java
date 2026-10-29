@@ -41,12 +41,14 @@ public class InviteService {
   private final JwtService jwtService;
   private final OnboardingProgressRepository onboardingProgress;
   private final LegalService legalService;
+  private final InviteMailer inviteMailer;
   private final SecureRandom random = new SecureRandom();
 
   public InviteService(InviteRepository invites, AppUserRepository users,
       OrganizationRepository organizations, RefreshTokenRepository refreshTokens,
       PasswordEncoder passwordEncoder, JwtService jwtService,
-      OnboardingProgressRepository onboardingProgress, LegalService legalService) {
+      OnboardingProgressRepository onboardingProgress, LegalService legalService,
+      InviteMailer inviteMailer) {
     this.invites = invites;
     this.users = users;
     this.organizations = organizations;
@@ -55,6 +57,7 @@ public class InviteService {
     this.jwtService = jwtService;
     this.onboardingProgress = onboardingProgress;
     this.legalService = legalService;
+    this.inviteMailer = inviteMailer;
   }
 
   @Transactional
@@ -70,17 +73,36 @@ public class InviteService {
     if (!RolePermissions.isAssignableByOrgAdmin(role)) {
       throw ApiException.forbidden("You cannot invite a user with the " + role.name() + " role");
     }
+    String email = req.getEmail().trim().toLowerCase();
+
+    // Backend enforcement: never invite a user who is already a member, and
+    // never create a second pending invitation for the same address.
+    if (users.existsByOrganization_IdAndEmail(orgId, email)) {
+      throw ApiException.conflict("This email address is already a member of the organisation.");
+    }
+    Instant now = Instant.now();
+    if (invites.findByOrganizationIdAndEmailAndAcceptedAtIsNullAndExpiresAtAfter(orgId, email,
+        now).isPresent()) {
+      throw ApiException.conflict("An invitation is already pending for this email address.");
+    }
+
+    int daysValid = req.getDaysValid() != null ? req.getDaysValid() : 7;
     String token = generateToken();
     Invite invite = new Invite();
     invite.setOrganization(org);
-    invite.setEmail(req.getEmail().trim().toLowerCase());
+    invite.setEmail(email);
     invite.setRole(role);
     invite.setTokenHash(TokenHashes.sha256Hex(token));
-    invite.setExpiresAt(Instant.now().plus(req.getDaysValid() != null ? req.getDaysValid() : 7,
-        ChronoUnit.DAYS));
+    invite.setExpiresAt(Instant.now().plus(daysValid, ChronoUnit.DAYS));
     invite.setCreatedBy(currentActorId());
     Invite saved = invites.save(invite);
-    return toResponse(saved, token);
+
+    // Send the invitation email. Mail is optional: when it cannot be delivered
+    // the invitation still exists, so the inviter can copy the link and share
+    // it through other channels instead. Delivery problems never surface as a
+    // hard failure.
+    boolean emailSent = inviteMailer.send(org, email, token, role, daysValid);
+    return toResponse(saved, token, emailSent);
   }
 
   @Transactional(readOnly = true)
@@ -88,7 +110,7 @@ public class InviteService {
     UUID orgId = TenantContext.require();
     return invites.findByOrganizationIdOrderByCreatedAtDesc(orgId).stream()
         .filter(i -> i.getAcceptedAt() == null && i.getExpiresAt().isAfter(Instant.now()))
-        .map(i -> toResponse(i, null))
+        .map(i -> toResponse(i, null, false))
         .toList();
   }
 
@@ -181,7 +203,7 @@ public class InviteService {
     return null;
   }
 
-  private InviteResponse toResponse(Invite invite, String token) {
+  private InviteResponse toResponse(Invite invite, String token, boolean emailSent) {
     InviteResponse r = new InviteResponse();
     r.setId(invite.getId());
     r.setEmail(invite.getEmail());
@@ -189,6 +211,7 @@ public class InviteService {
     r.setExpiresAt(invite.getExpiresAt());
     r.setAcceptedAt(invite.getAcceptedAt());
     r.setToken(token);
+    r.setEmailSent(emailSent);
     return r;
   }
 }

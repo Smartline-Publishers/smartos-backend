@@ -6,14 +6,14 @@ Sibling repo: `../smartos` (Next.js frontend, consumes this API). System design,
 
 ## Stack
 
-- Java 21 bytecode (runs on JDK 21+; verified on JDK 25), Maven wrapper (`mvnw` / `mvnw.cmd` — no local Maven needed)
+- Java 25 bytecode (requires JDK 25+), Maven wrapper (`mvnw` / `mvnw.cmd` — no local Maven needed)
 - Spring Boot 4.1: Web, Data JPA, Security + JJWT, Validation, AOP (audit), Flyway, PostgreSQL driver, Springdoc OpenAPI
 - Spring Mail (optional branded transactional email) and server-verified WebAuthn/FIDO2 passkeys
 - Tests: JUnit 5 + Mockito (`src/test`)
 
 ## Prerequisites
 
-- JDK 21+
+- JDK 25+
 - Docker + Docker Compose (local Postgres only; the API itself runs locally)
 - A local `.env` file (never committed — company policy excludes all env files
   from git). Create it with these variables (see Configuration below for details):

@@ -40,14 +40,146 @@
     {
       "name": "app.mail.enabled",
       "type": "java.lang.Boolean",
-      "description": "Enables password-reset email delivery when SMTP is configured.",
+      "description": "Enables transactional email delivery (password resets and other branded messages). SMTP must also be configured.",
       "defaultValue": false
+    },
+    {
+      "name": "app.mail.provider",
+      "type": "java.lang.String",
+      "description": "Optional provider preset: gmail, outlook, office365, sendgrid, mailgun, postmark. Supplies a host/port when SMTP_SERVER/SMTP_PORT are blank.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.host",
+      "type": "java.lang.String",
+      "description": "SMTP server host. Set via SMTP_SERVER. Required when mail is enabled unless a provider preset supplies it.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.port",
+      "type": "java.lang.Integer",
+      "description": "SMTP port. Set via SMTP_PORT; defaults to the provider preset port, 465 with implicit TLS, otherwise 587.",
+      "defaultValue": 587
+    },
+    {
+      "name": "app.mail.username",
+      "type": "java.lang.String",
+      "description": "SMTP username (usually the mailbox address). Set via SMTP_EMAIL. Leave blank for an unauthenticated relay.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.password",
+      "type": "java.lang.String",
+      "description": "SMTP password or provider API key/app password. Set via SMTP_PASSWORD. Never commit this value.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.use-ssl",
+      "type": "java.lang.Boolean",
+      "description": "Use implicit TLS (SMTPS, normally port 465) instead of STARTTLS. Set via SMTP_USE_SSL. When blank, port 465 implies TLS.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.mail.starttls",
+      "type": "java.lang.Boolean",
+      "description": "Enable the STARTTLS upgrade on non-implicit-TLS ports. Set via SMTP_STARTTLS.",
+      "defaultValue": true
+    },
+    {
+      "name": "app.mail.starttls-required",
+      "type": "java.lang.Boolean",
+      "description": "Refuse delivery when the SMTP server does not offer STARTTLS. Set via SMTP_STARTTLS_REQUIRED; relax only for a trusted local relay.",
+      "defaultValue": true
+    },
+    {
+      "name": "app.mail.timeout-ms",
+      "type": "java.lang.Integer",
+      "description": "SMTP connection, read and write timeout in milliseconds. Set via SMTP_TIMEOUT_MS.",
+      "defaultValue": 10000
     },
     {
       "name": "app.mail.from",
       "type": "java.lang.String",
-      "description": "Sender address used for password-reset emails.",
+      "description": "Sender address for transactional email. Set via MAIL_FROM; falls back to SMTP_EMAIL so provider From checks pass.",
       "defaultValue": "no-reply@smartos.local"
+    },
+    {
+      "name": "app.mail.brand.app-name",
+      "type": "java.lang.String",
+      "description": "Product name shown in email titles, the wordmark and the footer. Set via MAIL_APP_NAME.",
+      "defaultValue": "SmartOS"
+    },
+    {
+      "name": "app.mail.brand.company-name",
+      "type": "java.lang.String",
+      "description": "Legal/company name shown in the email footer. Set via MAIL_COMPANY_NAME.",
+      "defaultValue": "Smartline Publishers Ltd"
+    },
+    {
+      "name": "app.mail.brand.eyebrow",
+      "type": "java.lang.String",
+      "description": "Small uppercase line under the wordmark. Set via MAIL_BRAND_EYEBROW.",
+      "defaultValue": "SMARTLINE PUBLISHERS"
+    },
+    {
+      "name": "app.mail.brand.logo-url",
+      "type": "java.lang.String",
+      "description": "Optional absolute HTTPS URL to a raster logo (PNG/JPG). Blank uses the built-in CSS wordmark that every email client renders. Set via MAIL_LOGO_URL.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.primary-color",
+      "type": "java.lang.String",
+      "description": "Primary button colour as a hex value. Set via MAIL_PRIMARY_COLOR; invalid values fall back to the SmartOS red.",
+      "defaultValue": "#dc2626"
+    },
+    {
+      "name": "app.mail.brand.accent-color",
+      "type": "java.lang.String",
+      "description": "Accent colour for the wordmark, eyebrow and info notices. Set via MAIL_ACCENT_COLOR.",
+      "defaultValue": "#2563eb"
+    },
+    {
+      "name": "app.mail.brand.support-email",
+      "type": "java.lang.String",
+      "description": "Support address shown in the email help block. Set via MAIL_SUPPORT_EMAIL.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.support-phone",
+      "type": "java.lang.String",
+      "description": "Support phone number shown in the email help block. Set via MAIL_SUPPORT_PHONE.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.support-hours",
+      "type": "java.lang.String",
+      "description": "Support opening hours shown in the email help block. Set via MAIL_SUPPORT_HOURS.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.footer-address",
+      "type": "java.lang.String",
+      "description": "Company postal address shown in the email footer. Set via MAIL_FOOTER_ADDRESS.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.privacy-url",
+      "type": "java.lang.String",
+      "description": "Privacy policy URL used in the email footer. Defaults to the web app's /legal?doc=privacy page. Set via MAIL_PRIVACY_URL.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.terms-url",
+      "type": "java.lang.String",
+      "description": "Terms of service URL used in the email footer. Defaults to the web app's /legal?doc=terms page. Set via MAIL_TERMS_URL.",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.mail.brand.help-url",
+      "type": "java.lang.String",
+      "description": "Help centre URL used in the email help block and footer. Defaults to the web app's /help page. Set via MAIL_HELP_URL.",
+      "defaultValue": ""
     },
     {
       "name": "app.mail.provider",

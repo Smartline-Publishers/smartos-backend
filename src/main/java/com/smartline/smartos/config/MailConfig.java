@@ -79,9 +79,11 @@ public class MailConfig {
     props.put("mail.smtp.auth", Boolean.toString(auth));
     // Implicit TLS (port 465) and STARTTLS (port 587) are mutually exclusive.
     props.put("mail.smtp.ssl.enable", Boolean.toString(settings.implicitTls()));
-    props.put("mail.smtp.starttls.enable", Boolean.toString(!settings.implicitTls()));
-    // Require encryption when using STARTTLS instead of silently downgrading.
-    props.put("mail.smtp.starttls.required", Boolean.toString(!settings.implicitTls()));
+    props.put("mail.smtp.starttls.enable", Boolean.toString(settings.startTls()));
+    // Refuse to send credentials over plaintext when the server does not offer
+    // STARTTLS. Can be relaxed for a trusted local relay with
+    // SMTP_STARTTLS_REQUIRED=false.
+    props.put("mail.smtp.starttls.required", Boolean.toString(settings.startTlsRequired()));
     // Without these a blocked SMTP port holds the HTTP request thread open.
     props.put("mail.smtp.connectiontimeout", Integer.toString(settings.timeoutMs()));
     props.put("mail.smtp.timeout", Integer.toString(settings.timeoutMs()));
@@ -110,11 +112,25 @@ public class MailConfig {
       log.warn("SMTP authentication is partially configured; set both SMTP_EMAIL and "
           + "SMTP_PASSWORD, or leave both blank for an unauthenticated relay.");
     }
-    log.info("Password reset email ready via {}:{} ({}) with {}",
+    if (!settings.implicitTls() && !settings.startTls() && !settings.username().isBlank()) {
+      log.warn("STARTTLS is disabled while SMTP authentication is enabled; credentials "
+          + "would be sent over plaintext. Set SMTP_USE_SSL=true or re-enable STARTTLS.");
+    }
+    log.info("Password reset email ready via {}:{} with {} and {}",
         settings.host(),
         settings.port(),
-        settings.implicitTls() ? "implicit TLS" : "STARTTLS",
+        tlsDescription(settings),
         settings.username().isBlank() ? "no SMTP authentication" : "SMTP authentication");
+  }
+
+  private static String tlsDescription(Settings settings) {
+    if (settings.implicitTls()) {
+      return "implicit TLS";
+    }
+    if (!settings.startTls()) {
+      return "no TLS";
+    }
+    return settings.startTlsRequired() ? "required STARTTLS" : "opportunistic STARTTLS";
   }
 
   /** Resolved transport settings used to build the SMTP sender. */
@@ -126,6 +142,8 @@ public class MailConfig {
       String username,
       String password,
       boolean implicitTls,
+      boolean startTls,
+      boolean startTlsRequired,
       int timeoutMs) {
   }
 
@@ -155,7 +173,11 @@ public class MailConfig {
       port = implicitTls ? 465 : 587;
     }
 
-    Integer timeout = positiveInteger("app.mail.timeout-ms");
+    boolean startTls = !implicitTls && boolOr(true, "SMTP_STARTTLS", "app.mail.starttls");
+    boolean startTlsRequired = startTls
+        && boolOr(true, "SMTP_STARTTLS_REQUIRED", "app.mail.starttls-required");
+
+    Integer timeout = positiveInteger("SMTP_TIMEOUT_MS", "app.mail.timeout-ms");
     int timeoutMs = timeout != null && timeout > 0 ? timeout : DEFAULT_TIMEOUT_MS;
 
     return new Settings(
@@ -166,6 +188,8 @@ public class MailConfig {
         firstText("SMTP_EMAIL", "app.mail.username", "spring.mail.username"),
         firstText("SMTP_PASSWORD", "app.mail.password", "spring.mail.password"),
         implicitTls,
+        startTls,
+        startTlsRequired,
         timeoutMs);
   }
 
@@ -187,13 +211,22 @@ public class MailConfig {
   /** Blank optional values are ignored, allowing partially filled local configuration. */
   private Boolean bool(String... keys) {
     String value = firstText(keys);
-    if (value.isBlank()) {
-      return null;
+    return value.isBlank() ? null : parseBoolean(keys[0], value);
+  }
+
+  private boolean boolOr(boolean defaultValue, String... keys) {
+    String value = firstText(keys);
+    return value.isBlank() ? defaultValue : parseBoolean(keys[0], value);
+  }
+
+  private static boolean parseBoolean(String key, String value) {
+    if ("true".equalsIgnoreCase(value)) {
+      return true;
     }
-    if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-      return Boolean.valueOf(value);
+    if ("false".equalsIgnoreCase(value)) {
+      return false;
     }
-    throw new IllegalStateException("Invalid boolean value for " + keys[0] + "; use true or false.");
+    throw new IllegalStateException("Invalid boolean value for " + key + "; use true or false.");
   }
 
   private Integer number(String... keys) {
@@ -213,8 +246,8 @@ public class MailConfig {
     }
   }
 
-  private Integer positiveInteger(String key) {
-    String value = text(key);
+  private Integer positiveInteger(String... keys) {
+    String value = firstText(keys);
     if (value.isBlank()) {
       return null;
     }
@@ -225,7 +258,7 @@ public class MailConfig {
       }
       return number;
     } catch (NumberFormatException e) {
-      throw new IllegalStateException("Invalid positive integer in " + key + ".");
+      throw new IllegalStateException("Invalid positive integer in " + keys[0] + ".");
     }
   }
 }

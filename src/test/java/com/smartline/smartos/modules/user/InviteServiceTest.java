@@ -4,7 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +47,7 @@ class InviteServiceTest {
   @Mock private JwtService jwtService;
   @Mock private OnboardingProgressRepository onboardingProgress;
   @Mock private LegalService legalService;
+  @Mock private InviteMailer inviteMailer;
 
   private InviteService service;
   private UUID orgId;
@@ -52,7 +56,7 @@ class InviteServiceTest {
   @BeforeEach
   void setUp() {
     service = new InviteService(invites, users, organizations, refreshTokens, passwordEncoder,
-        jwtService, onboardingProgress, legalService);
+        jwtService, onboardingProgress, legalService, inviteMailer);
     orgId = UUID.randomUUID();
     TenantContext.setCurrentOrg(orgId);
     org = new Organization();
@@ -94,6 +98,78 @@ class InviteServiceTest {
 
     assertEquals(HttpStatus.BAD_REQUEST,
         assertThrows(ApiException.class, () -> service.create(req)).getStatus());
+  }
+
+  @Test
+  void createRejectsExistingMember() {
+    when(organizations.findById(orgId)).thenReturn(Optional.of(org));
+    when(users.existsByOrganization_IdAndEmail(orgId, "editor@acme.test")).thenReturn(true);
+
+    CreateInviteRequest req = new CreateInviteRequest();
+    req.setEmail("Editor@Acme.Test");
+    req.setRole(Role.EDITOR);
+
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+    assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+    verify(invites, never()).save(any());
+  }
+
+  @Test
+  void createRejectsDuplicatePendingInvitation() {
+    when(organizations.findById(orgId)).thenReturn(Optional.of(org));
+    when(users.existsByOrganization_IdAndEmail(orgId, "editor@acme.test")).thenReturn(false);
+    Invite pending = new Invite();
+    pending.setId(UUID.randomUUID());
+    pending.setOrganization(org);
+    pending.setEmail("editor@acme.test");
+    pending.setRole(Role.EDITOR);
+    pending.setExpiresAt(Instant.now().plusSeconds(3600));
+    when(invites.findByOrganizationIdAndEmailAndAcceptedAtIsNullAndExpiresAtAfter(
+        eq(orgId), eq("editor@acme.test"), any())).thenReturn(Optional.of(pending));
+
+    CreateInviteRequest req = new CreateInviteRequest();
+    req.setEmail("editor@acme.test");
+    req.setRole(Role.EDITOR);
+
+    ApiException ex = assertThrows(ApiException.class, () -> service.create(req));
+    assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+    verify(invites, never()).save(any());
+  }
+
+  @Test
+  void createSendsInvitationEmail() {
+    when(organizations.findById(orgId)).thenReturn(Optional.of(org));
+    when(invites.save(any(Invite.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(inviteMailer.send(eq(org), eq("editor@acme.test"), anyString(), eq(Role.EDITOR),
+        eq(3))).thenReturn(true);
+
+    CreateInviteRequest req = new CreateInviteRequest();
+    req.setEmail("editor@acme.test");
+    req.setRole(Role.EDITOR);
+    req.setDaysValid(3);
+
+    InviteResponse created = service.create(req);
+
+    assertNotNull(created.getToken());
+    assertEquals(true, created.isEmailSent());
+    verify(inviteMailer).send(eq(org), eq("editor@acme.test"), anyString(), eq(Role.EDITOR),
+        eq(3));
+  }
+
+  @Test
+  void createStillCreatedWhenEmailDeliveryFails() {
+    when(organizations.findById(orgId)).thenReturn(Optional.of(org));
+    when(invites.save(any(Invite.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(inviteMailer.send(any(), anyString(), anyString(), any(), anyInt())).thenReturn(false);
+
+    CreateInviteRequest req = new CreateInviteRequest();
+    req.setEmail("editor@acme.test");
+    req.setRole(Role.EDITOR);
+
+    InviteResponse created = service.create(req);
+
+    assertNotNull(created.getToken());
+    assertEquals(false, created.isEmailSent());
   }
 
   @Test

@@ -109,6 +109,8 @@ public final class InviteDtos {
     private Instant acceptedAt;
     /** Plaintext token: populated only on creation, never stored or re-shown. */
     private String token;
+    /** True when the invitation email was handed to the outbound mail service. */
+    private boolean emailSent;
 
     public InviteResponse() {
     }
@@ -159,6 +161,14 @@ public final class InviteDtos {
 
     public void setToken(String token) {
       this.token = token;
+    }
+
+    public boolean isEmailSent() {
+      return emailSent;
+    }
+
+    public void setEmailSent(boolean emailSent) {
+      this.emailSent = emailSent;
     }
   }
 }

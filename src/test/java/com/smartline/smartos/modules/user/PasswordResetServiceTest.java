@@ -52,6 +52,9 @@ class PasswordResetServiceTest {
     service = new PasswordResetService(users, resetTokens, refreshTokens, passwordEncoder,
         mailer, rateLimiter, TTL_MINUTES, true);
     lenient().when(rateLimiter.forgotAllowed(any(), any())).thenReturn(true);
+    // These tests exercise the delivery path, so the transport must look ready
+    // even when a specific send is then made to fail.
+    lenient().when(mailer.isEnabled()).thenReturn(true);
   }
 
   @Test
