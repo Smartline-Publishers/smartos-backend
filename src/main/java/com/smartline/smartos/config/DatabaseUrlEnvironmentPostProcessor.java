@@ -22,24 +22,26 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
   @Override
   public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
     MutablePropertySources sources = environment.getPropertySources();
-    String databaseUrl = sources.contains("systemEnvironment")
-        ? (String) ((org.springframework.core.env.PropertySource<?>) sources.get("systemEnvironment"))
-            .getProperty("DATABASE_URL")
-        : null;
-    // Also check system properties (for local runs).
+    String databaseUrl = System.getenv("DATABASE_URL");
     if (databaseUrl == null || databaseUrl.isBlank()) {
       databaseUrl = System.getProperty("DATABASE_URL");
     }
-    if (databaseUrl == null || databaseUrl.isBlank()) {
-      return;
-    }
-    // Don't override an explicitly provided DB_URL (check raw env/property,
-    // not the YAML default which is always non-blank).
     String explicitDbUrl = System.getenv("DB_URL");
     if (explicitDbUrl == null || explicitDbUrl.isBlank()) {
       explicitDbUrl = System.getProperty("DB_URL");
     }
-    if (explicitDbUrl != null && !explicitDbUrl.isBlank()) {
+    // If DB_URL is provided in Neon/native format (postgresql://...), convert it.
+    if (explicitDbUrl != null && !explicitDbUrl.isBlank()
+        && (explicitDbUrl.startsWith("postgresql://") || explicitDbUrl.startsWith("postgres://"))) {
+      databaseUrl = explicitDbUrl;
+      explicitDbUrl = null;
+    }
+    if (databaseUrl == null || databaseUrl.isBlank()) {
+      // Nothing to convert; if DB_URL is already JDBC, leave it untouched.
+      return;
+    }
+    if (explicitDbUrl != null && !explicitDbUrl.isBlank() && explicitDbUrl.startsWith("jdbc:")) {
+      // Explicit JDBC URL provided; don't override.
       return;
     }
 
