@@ -1,0 +1,34 @@
+# VCS / editor
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+
+# Build output
+target/
+*.jar
+*.war
+*.class
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs / temp
+*.log
+logs/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Test reports
+surefire-reports/
+test-classes/
