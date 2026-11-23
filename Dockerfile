@@ -2,6 +2,9 @@
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /app
 
+# The Maven wrapper needs curl/wget to fetch its jar when it isn't bundled.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 # Copy Maven wrapper + project descriptor first to leverage layer caching.
 COPY mvnw ./
 COPY .mvn ./.mvn
