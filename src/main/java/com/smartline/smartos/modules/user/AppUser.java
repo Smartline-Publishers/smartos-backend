@@ -31,12 +31,16 @@ public class AppUser implements BelongsToOrganization {
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "organization_id", nullable = false)
+  @ManyToOne(fetch = FetchType.LAZY, optional = true)
+  @JoinColumn(name = "organization_id", nullable = true)
   private Organization organization;
 
   @Column(nullable = false)
   private String email;
+
+  /** Clerk user id (stable external id) once the account is linked to Clerk. */
+  @Column(name = "clerk_user_id", length = 255, unique = true)
+  private String clerkUserId;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
@@ -113,6 +117,14 @@ public class AppUser implements BelongsToOrganization {
 
   public void setEmail(String email) {
     this.email = email;
+  }
+
+  public String getClerkUserId() {
+    return clerkUserId;
+  }
+
+  public void setClerkUserId(String clerkUserId) {
+    this.clerkUserId = clerkUserId;
   }
 
   public String getPasswordHash() {

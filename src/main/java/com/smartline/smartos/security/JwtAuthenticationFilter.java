@@ -31,6 +31,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
+    // If a Clerk (or other) filter already authenticated this request, don't
+    // overwrite it with the legacy JWT path.
+    if (org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication() != null) {
+      try {
+        chain.doFilter(request, response);
+      } finally {
+        if (request.getRequestURI() == null || !request.getRequestURI().startsWith("/api/")) {
+          com.smartline.smartos.tenant.TenantContext.clear();
+        }
+      }
+      return;
+    }
     String header = request.getHeader("Authorization");
     if (header != null && header.startsWith("Bearer ")) {
       SecurityContextHolder.clearContext();

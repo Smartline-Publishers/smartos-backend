@@ -52,6 +52,10 @@ public class Organization {
   @Column(nullable = false, unique = true)
   private String slug;
 
+  /** Clerk organization id (stable external id) when linked to Clerk. */
+  @Column(name = "clerk_org_id", length = 255, unique = true)
+  private String clerkOrgId;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private Plan plan = Plan.FREE;
@@ -105,6 +109,14 @@ public class Organization {
 
   public void setSlug(String slug) {
     this.slug = slug;
+  }
+
+  public String getClerkOrgId() {
+    return clerkOrgId;
+  }
+
+  public void setClerkOrgId(String clerkOrgId) {
+    this.clerkOrgId = clerkOrgId;
   }
 
   public Plan getPlan() {

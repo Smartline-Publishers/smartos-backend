@@ -22,12 +22,16 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final ClerkJwtAuthenticationFilter clerkJwtAuthenticationFilter;
   private final ObjectMapper objectMapper;
   private final CorsConfigurationSource corsConfigurationSource;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper,
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+      ClerkJwtAuthenticationFilter clerkJwtAuthenticationFilter,
+      ObjectMapper objectMapper,
       CorsConfigurationSource corsConfigurationSource) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.clerkJwtAuthenticationFilter = clerkJwtAuthenticationFilter;
     this.objectMapper = objectMapper;
     this.corsConfigurationSource = corsConfigurationSource;
   }
@@ -72,6 +76,7 @@ public class SecurityConfig {
                 "/swagger-ui.html")
             .permitAll()
             .anyRequest().authenticated())
+        .addFilterBefore(clerkJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }

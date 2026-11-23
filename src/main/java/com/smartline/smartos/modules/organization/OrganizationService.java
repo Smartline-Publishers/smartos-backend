@@ -3,6 +3,8 @@ package com.smartline.smartos.modules.organization;
 import com.smartline.smartos.common.exception.ApiException;
 import com.smartline.smartos.media.MediaService;
 import com.smartline.smartos.modules.audit.Audited;
+import com.smartline.smartos.modules.user.AppUser;
+import com.smartline.smartos.modules.user.AppUserRepository;
 import com.smartline.smartos.security.Role;
 import com.smartline.smartos.security.UserPrincipal;
 import java.util.List;
@@ -18,10 +20,12 @@ public class OrganizationService {
 
   private final OrganizationRepository repository;
   private final MediaService media;
+  private final AppUserRepository users;
 
-  public OrganizationService(OrganizationRepository repository, MediaService media) {
+  public OrganizationService(OrganizationRepository repository, MediaService media, AppUserRepository users) {
     this.repository = repository;
     this.media = media;
+    this.users = users;
   }
 
   @Transactional
@@ -39,6 +43,75 @@ public class OrganizationService {
     org.setSlug(normalizedSlug);
     org.setPlan(Organization.Plan.FREE);
     return repository.save(org);
+  }
+
+  /**
+   * Clerk-aware onboarding: creates an organization for the currently authenticated
+   * user and makes them its ORG_ADMIN. Idempotent-ish: if the user already belongs
+   * to an organization, returns that organization instead of creating a duplicate.
+   */
+  /**
+   * Ensures a backend Organization exists for the given Clerk organization,
+   * creating one (and linking it) if needed. Returns the backend organization.
+   */
+  @Transactional
+  public Organization ensureForClerkOrg(String clerkOrgId, String name) {
+    if (clerkOrgId == null || clerkOrgId.isBlank()) {
+      throw ApiException.badRequest("Clerk organization id is required");
+    }
+    java.util.Optional<Organization> existing = repository.findByClerkOrgId(clerkOrgId);
+    if (existing.isPresent()) {
+      return existing.get();
+    }
+    String baseSlug = (name == null || name.isBlank() ? clerkOrgId : name)
+        .trim().toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+    if (baseSlug.isBlank()) baseSlug = "org";
+    String slug = baseSlug;
+    int i = 1;
+    while (repository.existsBySlug(slug)) {
+      slug = baseSlug + "-" + i++;
+    }
+    String orgName = (name == null || name.isBlank()) ? clerkOrgId : name.trim();
+    if (repository.existsByName(orgName)) {
+      orgName = orgName + " (" + clerkOrgId.substring(0, 6) + ")";
+    }
+    Organization org = new Organization();
+    org.setName(orgName);
+    org.setSlug(slug);
+    org.setClerkOrgId(clerkOrgId);
+    org.setPlan(Organization.Plan.FREE);
+    return repository.save(org);
+  }
+
+  @Transactional
+  public Organization bootstrapForCurrentUser(String name, String slug) {
+    UserPrincipal principal = currentPrincipal();
+    if (principal == null) {
+      throw ApiException.forbidden("Authentication required");
+    }
+    AppUser user = users.findById(principal.getUserId())
+        .orElseThrow(() -> ApiException.forbidden("Authentication required"));
+    if (user.getOrganization() != null) {
+      return user.getOrganization();
+    }
+    String normalizedSlug = slug.trim().toLowerCase();
+    if (repository.existsBySlug(normalizedSlug)) {
+      throw ApiException.conflict("Organization slug already exists: " + normalizedSlug);
+    }
+    if (repository.existsByName(name.trim())) {
+      throw ApiException.conflict("Organization name already exists: " + name);
+    }
+    Organization org = new Organization();
+    org.setName(name.trim());
+    org.setSlug(normalizedSlug);
+    org.setPlan(Organization.Plan.FREE);
+    Organization saved = repository.save(org);
+
+    user.setOrganization(saved);
+    user.setRole(Role.ORG_ADMIN);
+    user.setActive(true);
+    users.save(user);
+    return saved;
   }
 
   @Transactional(readOnly = true)

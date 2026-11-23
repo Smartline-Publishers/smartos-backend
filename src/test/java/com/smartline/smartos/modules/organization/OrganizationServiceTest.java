@@ -34,6 +34,7 @@ class OrganizationServiceTest {
 
   @Mock private OrganizationRepository repository;
   @Mock private com.smartline.smartos.media.MediaService media;
+  @Mock private com.smartline.smartos.modules.user.AppUserRepository users;
 
   private OrganizationService service;
   private Organization orgA;
@@ -41,7 +42,7 @@ class OrganizationServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new OrganizationService(repository, media);
+    service = new OrganizationService(repository, media, users);
     orgA = org("Acme", "acme");
     orgB = org("Globex", "globex");
   }

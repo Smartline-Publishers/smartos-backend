@@ -29,6 +29,13 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  clerk:
+    # Clerk JWKS URL for verifying session tokens, e.g.
+    # https://<frontend-api>.clerk.accounts.dev/.well-known/jwks.json
+    # Leave empty to keep the legacy JWT flow only.
+    jwks-url: ${CLERK_JWKS_URL:}
+    # Clerk secret key for linking existing users by email on first sign-in.
+    secret-key: ${CLERK_SECRET_KEY:}
   jwt:
     secret: ${JWT_SECRET:change-me-change-me-change-me-32bytes-minimum-secret}
     access-expiry-ms: 900000

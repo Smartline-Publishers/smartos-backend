@@ -52,6 +52,13 @@ public class OrganizationController {
     return ApiResponse.ok(OrganizationResponse.from(service.create(req.getName(), req.getSlug())));
   }
 
+  @PostMapping("/bootstrap")
+  @ResponseStatus(HttpStatus.CREATED)
+  @PreAuthorize("isAuthenticated()")
+  public ApiResponse<OrganizationResponse> bootstrap(@Valid @RequestBody CreateOrganizationRequest req) {
+    return ApiResponse.ok(OrganizationResponse.from(service.bootstrapForCurrentUser(req.getName(), req.getSlug())));
+  }
+
   @GetMapping("/current")
   @PreAuthorize("isAuthenticated()")
   public ApiResponse<OrganizationResponse> current() {
