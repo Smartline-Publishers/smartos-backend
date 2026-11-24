@@ -83,6 +83,34 @@ public class OrganizationService {
     return repository.save(org);
   }
 
+  /**
+   * Resolves the backend organization that represents a Clerk organization.
+   *
+   * Users who created an organization before Clerk became the source of truth
+   * still own a local organization with no {@code clerk_org_id}. Linking that
+   * row (instead of inserting a new one) keeps their data and avoids the
+   * duplicate organizations that "create your organization" onboarding used to
+   * produce.
+   */
+  @Transactional
+  public Organization resolveForClerkOrg(String clerkOrgId, String name, UUID currentOrgId) {
+    if (clerkOrgId == null || clerkOrgId.isBlank()) {
+      throw ApiException.badRequest("Clerk organization id is required");
+    }
+    java.util.Optional<Organization> linked = repository.findByClerkOrgId(clerkOrgId);
+    if (linked.isPresent()) {
+      return linked.get();
+    }
+    if (currentOrgId != null) {
+      Organization current = repository.findById(currentOrgId).orElse(null);
+      if (current != null && current.getClerkOrgId() == null) {
+        current.setClerkOrgId(clerkOrgId);
+        return repository.save(current);
+      }
+    }
+    return ensureForClerkOrg(clerkOrgId, name);
+  }
+
   @Transactional
   public Organization bootstrapForCurrentUser(String name, String slug) {
     UserPrincipal principal = currentPrincipal();

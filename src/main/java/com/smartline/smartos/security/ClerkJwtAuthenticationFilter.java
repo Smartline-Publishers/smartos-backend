@@ -1,5 +1,8 @@
 package com.smartline.smartos.security;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.user.AppUser;
 import com.smartline.smartos.modules.user.AppUserRepository;
 import com.smartline.smartos.tenant.TenantContext;
@@ -31,6 +34,12 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
   private final String jwksUrl;
   private final String secretKey;
   private volatile JwtDecoder decoder;
+
+  /** How long a "this user has no Clerk organizations" result is trusted. */
+  private static final long MEMBERSHIP_CHECK_TTL_MS = 60_000;
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private final java.util.concurrent.ConcurrentHashMap<String, Long> membershipChecks =
+      new java.util.concurrent.ConcurrentHashMap<>();
 
   public ClerkJwtAuthenticationFilter(
       AppUserRepository users,
@@ -95,26 +104,10 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
             }
           }
           if (user != null && user.isActive()) {
-            // Sync Clerk organization state into the backend when an org is active.
-            String clerkOrgId = jwt.getClaimAsString("org_id");
-            if (clerkOrgId != null && !clerkOrgId.isBlank()) {
-              String orgName = jwt.getClaimAsString("org_name");
-              if (orgName == null && !secretKey.isEmpty()) {
-                orgName = fetchClerkOrgName(clerkOrgId);
-              }
-              com.smartline.smartos.modules.organization.Organization org =
-                  organizations.ensureForClerkOrg(clerkOrgId, orgName);
-              // Only attach if the user has no org yet, or already belongs to this one.
-              if (user.getOrganization() == null
-                  || clerkOrgId.equals(user.getOrganization().getClerkOrgId())) {
-                user.setOrganization(org);
-                String orgRole = jwt.getClaimAsString("org_role");
-                if (orgRole != null && orgRole.toLowerCase().contains("admin")) {
-                  user.setRole(com.smartline.smartos.security.Role.ORG_ADMIN);
-                }
-                users.save(user);
-              }
-            }
+            // Clerk is the source of truth for organizations. Link the active
+            // Clerk organization, and adopt an existing membership when the
+            // session has not activated one yet.
+            syncClerkOrganization(user, jwt);
             List<String> roles = List.of(user.getRole().name());
             UserPrincipal principal = new UserPrincipal(user.getId(), user.getOrganizationId(), roles);
             var auth = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
@@ -136,6 +129,123 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
         TenantContext.clear();
       }
     }
+  }
+
+  /**
+   * Aligns the backend user with the Clerk organization in the session.
+   *
+   * Two cases matter:
+   * <ul>
+   *   <li>The session token carries {@code org_id} (an organization is active):
+   *       link it, and follow the user when they switch organizations in Clerk.</li>
+   *   <li>No {@code org_id} yet (memberships exist but none is active): adopt the
+   *       best membership so the app never asks for a second organization.</li>
+   * </ul>
+   */
+  private void syncClerkOrganization(AppUser user, Jwt jwt) {
+    String clerkOrgId = jwt.getClaimAsString("org_id");
+    if (clerkOrgId != null && !clerkOrgId.isBlank()) {
+      String orgName = jwt.getClaimAsString("org_name");
+      if (orgName == null && !secretKey.isEmpty()) {
+        orgName = fetchClerkOrgName(clerkOrgId);
+      }
+      Organization org =
+          organizations.resolveForClerkOrg(clerkOrgId, orgName, user.getOrganizationId());
+      boolean switched =
+          user.getOrganizationId() == null || !org.getId().equals(user.getOrganizationId());
+      user.setOrganization(org);
+      applyClerkOrgRole(user, jwt.getClaimAsString("org_role"), switched);
+      users.save(user);
+      return;
+    }
+    if (user.getOrganizationId() != null) {
+      return; // Already linked; nothing to adopt.
+    }
+    ClerkMembership membership = firstClerkMembership(user.getClerkUserId());
+    if (membership == null) {
+      return;
+    }
+    Organization org = organizations.resolveForClerkOrg(membership.orgId(), membership.name(), null);
+    user.setOrganization(org);
+    applyClerkOrgRole(user, membership.role(), true);
+    users.save(user);
+  }
+
+  /**
+   * Mirrors the Clerk organization role onto the backend role. Members of a
+   * newly activated organization must not keep admin rights from a previous one.
+   */
+  private void applyClerkOrgRole(AppUser user, String orgRole, boolean switchedOrg) {
+    if (orgRole == null || orgRole.isBlank()) {
+      return;
+    }
+    if (orgRole.toLowerCase().contains("admin")) {
+      user.setRole(Role.ORG_ADMIN);
+    } else if (switchedOrg && user.getRole() == Role.ORG_ADMIN) {
+      user.setRole(Role.VIEWER);
+    }
+  }
+
+  /**
+   * Picks the organization to adopt when the session has no active one:
+   * an admin membership first, otherwise the most recent membership. Negative
+   * results are cached briefly so users without memberships do not trigger a
+   * Clerk API call on every request.
+   */
+  private ClerkMembership firstClerkMembership(String clerkUserId) {
+    if (secretKey.isEmpty() || clerkUserId == null || clerkUserId.isBlank()) {
+      return null;
+    }
+    long now = System.currentTimeMillis();
+    Long last = membershipChecks.get(clerkUserId);
+    if (last != null && now - last < MEMBERSHIP_CHECK_TTL_MS) {
+      return null;
+    }
+    if (membershipChecks.size() > 5_000) {
+      membershipChecks.clear();
+    }
+    membershipChecks.put(clerkUserId, now);
+    List<ClerkMembership> memberships = fetchClerkMemberships(clerkUserId);
+    if (memberships.isEmpty()) {
+      return null;
+    }
+    for (ClerkMembership membership : memberships) {
+      if (membership.role() != null && membership.role().toLowerCase().contains("admin")) {
+        return membership;
+      }
+    }
+    return memberships.get(0);
+  }
+
+  private List<ClerkMembership> fetchClerkMemberships(String clerkUserId) {
+    try {
+      java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+      java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+          .uri(java.net.URI.create(
+              "https://api.clerk.com/v1/users/" + clerkUserId + "/organization_memberships?limit=100"))
+          .header("Authorization", "Bearer " + secretKey)
+          .GET()
+          .build();
+      java.net.http.HttpResponse<String> res =
+          client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+      if (res.statusCode() != 200) return List.of();
+      JsonNode data = JSON.readTree(res.body()).path("data");
+      List<ClerkMembership> memberships = new java.util.ArrayList<>();
+      for (JsonNode node : data) {
+        String orgId = node.path("organization").path("id").asText("");
+        if (orgId.isBlank()) continue;
+        String name = node.path("organization").path("name").asText("");
+        memberships.add(new ClerkMembership(orgId, name.isBlank() ? null : name,
+            node.path("role").asText("")));
+      }
+      return memberships;
+    } catch (Exception e) {
+      return List.of();
+    }
+  }
+
+  /** One Clerk organization membership: the organization plus the member's role in it. */
+  private record ClerkMembership(String orgId, String name, String role) {
   }
 
   /**
