@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.user.AppUser;
 import com.smartline.smartos.modules.user.AppUserRepository;
+import com.smartline.smartos.security.UserPrincipal;
 import com.smartline.smartos.tenant.TenantContext;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -59,7 +60,7 @@ class JwtAuthenticationFilterTest {
     assertTrue(authentication.isAuthenticated());
     assertTrue(authentication.getAuthorities().stream()
         .anyMatch(authority -> authority.getAuthority().equals("PERM_users.read")));
-    assertEquals(organizationId, TenantContext.current());
+    assertEquals(organizationId, ((UserPrincipal) authentication.getPrincipal()).getOrgId());
   }
 
   @Test

@@ -17,21 +17,14 @@ public class TenantInterceptor implements HandlerInterceptor {
 
   @Override
   public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-    // Prefer JWT claim orgId; fallback to X-Tenant-Id header for dev.
+    // Tenant identity comes ONLY from the authenticated principal (the JWT/Clerk
+    // token). Never trust a client-supplied X-Tenant-Id header: an authenticated
+    // user without an organization, or a compromised token, could otherwise read
+    // another tenant's data. The header is deliberately ignored.
     UUID orgId = null;
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
       orgId = principal.getOrgId();
-    }
-    if (orgId == null) {
-      String header = request.getHeader("X-Tenant-Id");
-      if (header != null && !header.isBlank()) {
-        try {
-          orgId = UUID.fromString(header.trim());
-        } catch (IllegalArgumentException ignored) {
-          // invalid header -> leave null; TenantContext.require() will fail downstream
-        }
-      }
     }
     if (orgId != null) {
       TenantContext.setCurrentOrg(orgId);

@@ -43,6 +43,7 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
 
   public ClerkJwtAuthenticationFilter(
       AppUserRepository users,
+      @org.springframework.context.annotation.Lazy
       com.smartline.smartos.modules.organization.OrganizationService organizations,
       @Value("${app.clerk.jwks-url:}") String jwksUrl,
       @Value("${app.clerk.secret-key:}") String secretKey) {
@@ -125,6 +126,10 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       chain.doFilter(request, response);
     } finally {
+      // TenantContext is cleared here for non-/api paths; the TenantInterceptor
+      // clears it for /api paths after the controller runs. Clearing only
+      // outside /api keeps TenantContext available to controllers during the
+      // request while avoiding cross-tenant leakage on pooled threads.
       if (request.getRequestURI() == null || !request.getRequestURI().startsWith("/api/")) {
         TenantContext.clear();
       }
@@ -181,8 +186,15 @@ public class ClerkJwtAuthenticationFilter extends OncePerRequestFilter {
     }
     if (orgRole.toLowerCase().contains("admin")) {
       user.setRole(Role.ORG_ADMIN);
-    } else if (switchedOrg && user.getRole() == Role.ORG_ADMIN) {
-      user.setRole(Role.VIEWER);
+    } else {
+      // Clerk is the source of truth for organization membership. A user who is
+      // no longer an admin in Clerk must not keep ORG_ADMIN rights in SmartOS,
+      // even if they stay in the same organization.
+      if (user.getRole() == Role.ORG_ADMIN) {
+        user.setRole(Role.VIEWER);
+      } else if (switchedOrg && user.getRole() != Role.PLATFORM_ADMIN) {
+        // Keep the app-assigned role across org switches unless it was org admin.
+      }
     }
   }
 

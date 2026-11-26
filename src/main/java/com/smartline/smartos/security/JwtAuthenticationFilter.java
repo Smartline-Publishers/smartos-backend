@@ -86,7 +86,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       chain.doFilter(request, response);
     } finally {
-      // TenantContext is also cleared by TenantInterceptor; clear here for non-/api paths.
       if (request.getRequestURI() == null || !request.getRequestURI().startsWith("/api/")) {
         TenantContext.clear();
       }

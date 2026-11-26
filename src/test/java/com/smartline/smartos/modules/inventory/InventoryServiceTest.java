@@ -17,6 +17,7 @@ import com.smartline.smartos.modules.inventory.InventoryDtos.CreateWarehouseRequ
 import com.smartline.smartos.modules.inventory.InventoryDtos.StockLevelResponse;
 import com.smartline.smartos.modules.inventory.InventoryDtos.TransferRequest;
 import com.smartline.smartos.modules.inventory.StockMovement.MovementType;
+import com.smartline.smartos.modules.inventory.StockMovementRepository;
 import com.smartline.smartos.modules.organization.Organization;
 import com.smartline.smartos.modules.organization.OrganizationRepository;
 import com.smartline.smartos.security.Role;
@@ -100,8 +101,8 @@ class InventoryServiceTest {
         .thenReturn(Optional.of(warehouse));
     when(warehouses.findByIdAndOrganization_Id(eq(target.getId()), eq(orgId)))
         .thenReturn(Optional.of(target));
-    when(movements.findByOrganization_Id(eq(orgId)))
-        .thenReturn(List.of(movement(book, warehouse, 100)));
+    when(movements.sumQtyDelta(eq(orgId), eq(book.getId()), eq(warehouse.getId())))
+        .thenReturn(100);
     when(movements.save(any(StockMovement.class))).thenAnswer(inv -> inv.getArgument(0));
 
     TransferRequest req = new TransferRequest();
@@ -136,7 +137,7 @@ class InventoryServiceTest {
     when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
     // No to-warehouse stub: the OUT leg fails the stock check first.
-    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
+    // currentLevel is now resolved via sumQtyDelta, which defaults to 0.
 
     TransferRequest req = new TransferRequest();
     req.setBookId(book.getId());
@@ -156,7 +157,7 @@ class InventoryServiceTest {
         .thenReturn(Optional.of(book));
     when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
-    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
+    // currentLevel is now resolved via sumQtyDelta, which defaults to 0.
 
     CreateMovementRequest req = new CreateMovementRequest();
     req.setBookId(book.getId());
@@ -175,7 +176,7 @@ class InventoryServiceTest {
         .thenReturn(Optional.of(book));
     when(warehouses.findByIdAndOrganization_Id(eq(warehouse.getId()), eq(orgId)))
         .thenReturn(Optional.of(warehouse));
-    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of());
+    // currentLevel is now resolved via sumQtyDelta, which defaults to 0.
     when(movements.save(any(StockMovement.class))).thenAnswer(inv -> inv.getArgument(0));
 
     CreateMovementRequest req = new CreateMovementRequest();
@@ -193,10 +194,9 @@ class InventoryServiceTest {
     other.setId(UUID.randomUUID());
     other.setOrganization(org);
     other.setTitle("Akan Tales");
-    when(movements.findByOrganization_Id(eq(orgId))).thenReturn(List.of(
-        movement(book, warehouse, 10),
-        movement(book, warehouse, -3),
-        movement(other, warehouse, 5)));
+    when(movements.aggregateLevelsByOrg(eq(orgId))).thenReturn(List.of(
+        new StockMovementRepository.StockLevelProjection(book.getId(), warehouse.getId(), 7L),
+        new StockMovementRepository.StockLevelProjection(other.getId(), warehouse.getId(), 5L)));
     when(books.findAllById(any())).thenReturn(List.of(book, other));
     when(warehouses.findAllById(any())).thenReturn(List.of(warehouse));
 

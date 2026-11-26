@@ -157,17 +157,18 @@ public class InventoryService {
   @Transactional(readOnly = true)
   public List<StockLevelResponse> levels(UUID bookId, UUID warehouseId, Integer below) {
     UUID orgId = TenantContext.require();
+    // Aggregate in the database (GROUP BY) instead of loading every movement row.
     Map<List<UUID>, Integer> sums = new HashMap<>();
-    for (StockMovement m : movements.findByOrganization_Id(orgId)) {
-      UUID b = m.getBook() != null ? m.getBook().getId() : null;
-      UUID w = m.getWarehouse() != null ? m.getWarehouse().getId() : null;
-      if (b == null || w == null) {
-        continue;
-      }
+    List<StockMovementRepository.StockLevelProjection> aggregated = movements.aggregateLevelsByOrg(orgId);
+    if (aggregated == null) aggregated = List.of();
+    for (StockMovementRepository.StockLevelProjection p : aggregated) {
+      UUID b = p.bookId();
+      UUID w = p.warehouseId();
+      if (b == null || w == null) continue;
       if (bookId != null && !bookId.equals(b) || warehouseId != null && !warehouseId.equals(w)) {
         continue;
       }
-      sums.merge(List.of(b, w), m.getQtyDelta(), Integer::sum);
+      sums.put(List.of(b, w), p.quantity() == null ? 0 : p.quantity().intValue());
     }
     Map<UUID, String> bookNames = new HashMap<>();
     books.findAllById(sums.keySet().stream().map(k -> k.get(0)).toList())
@@ -190,11 +191,7 @@ public class InventoryService {
   public int currentLevel(UUID orgId, UUID bookId, UUID warehouseId) {
     // Summed on read so levels can never drift from the ledger. For very
     // large histories this should move to a materialized query.
-    return movements.findByOrganization_Id(orgId).stream()
-        .filter(m -> m.getBook() != null && bookId.equals(m.getBook().getId())
-            && m.getWarehouse() != null && warehouseId.equals(m.getWarehouse().getId()))
-        .mapToInt(StockMovement::getQtyDelta)
-        .sum();
+    return movements.sumQtyDelta(orgId, bookId, warehouseId);
   }
 
   private boolean callerIsAdmin() {
